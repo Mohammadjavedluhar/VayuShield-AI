@@ -27,8 +27,7 @@ function generateCacheKey(task: string, inputString: string): string {
   let hash = 0;
   const str = `${task}::${inputString}`;
   for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
+    hash = Math.trunc((hash << 5) - hash + str.charCodeAt(i));
   }
   return `vayushield_${task}_${Math.abs(hash)}`;
 }

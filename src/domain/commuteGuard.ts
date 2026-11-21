@@ -101,8 +101,8 @@ export function getBreathingRate(commuterType: CommuterType, travelMode: TravelM
  */
 export function getInversionFactor(timeStr: string): { factor: number; riskLevel: 'critical' | 'high' | 'moderate' | 'low' } {
   const parts = timeStr.split(':');
-  const hour = parseInt(parts[0], 10) || 7;
-  const minute = parseInt(parts[1], 10) || 0;
+  const hour = Number.parseInt(parts[0], 10) || 7;
+  const minute = Number.parseInt(parts[1], 10) || 0;
   const totalMinutes = hour * 60 + minute;
 
   // 6:30 AM (390) to 7:45 AM (465): Cold inversion layer compressed (<150m)
@@ -148,8 +148,8 @@ export function analyzeMorningCommute(params: MorningCommuteParams): MorningComm
 
   // 4. Departure Delay Optimization (e.g., delaying by 45 minutes)
   const parts = params.departureTime.split(':');
-  const currentH = parseInt(parts[0], 10) || 7;
-  const currentM = parseInt(parts[1], 10) || 0;
+  const currentH = Number.parseInt(parts[0], 10) || 7;
+  const currentM = Number.parseInt(parts[1], 10) || 0;
   const delayedTotalMinutes = currentH * 60 + currentM + 45;
   const delayedH = Math.floor(delayedTotalMinutes / 60);
   const delayedM = delayedTotalMinutes % 60;

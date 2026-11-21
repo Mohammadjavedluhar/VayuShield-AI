@@ -215,7 +215,7 @@ export const AskAssistant: React.FC<AskAssistantProps> = ({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleSend();
+            void handleSend();
           }}
           className="relative"
         >

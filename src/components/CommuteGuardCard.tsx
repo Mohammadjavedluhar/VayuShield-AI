@@ -87,10 +87,11 @@ export const CommuteGuardCard: React.FC<CommuteGuardCardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
         {/* Commuter Type */}
         <div>
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+          <label htmlFor="commute-commuter-type" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
             Commuter Vulnerability
           </label>
           <select
+            id="commute-commuter-type"
             value={commuterType}
             onChange={(e) => setCommuterType(e.target.value as CommuterType)}
             className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -104,10 +105,11 @@ export const CommuteGuardCard: React.FC<CommuteGuardCardProps> = ({
 
         {/* Departure Time */}
         <div>
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+          <label htmlFor="commute-departure-time" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
             Departure Time
           </label>
           <select
+            id="commute-departure-time"
             value={departureTime}
             onChange={(e) => setDepartureTime(e.target.value)}
             className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -123,10 +125,11 @@ export const CommuteGuardCard: React.FC<CommuteGuardCardProps> = ({
 
         {/* Transit Mode */}
         <div>
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+          <label htmlFor="commute-transit-mode" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
             Transit Mode
           </label>
           <select
+            id="commute-transit-mode"
             value={travelMode}
             onChange={(e) => setTravelMode(e.target.value as TravelMode)}
             className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -142,10 +145,11 @@ export const CommuteGuardCard: React.FC<CommuteGuardCardProps> = ({
 
         {/* Current Mask Grade */}
         <div>
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+          <label htmlFor="commute-current-mask" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
             Current Mask Worn
           </label>
           <select
+            id="commute-current-mask"
             value={currentMask}
             onChange={(e) => setCurrentMask(e.target.value as MaskGrade)}
             className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"

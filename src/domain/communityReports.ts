@@ -109,7 +109,20 @@ export function getStoredReports(): CommunityReport[] {
 export function saveStoredReports(reports: CommunityReport[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(reports));
+    if (!Array.isArray(reports)) return;
+    const sanitized: CommunityReport[] = reports.slice(0, 50).map((r) => ({
+      id: String(r.id || '').replace(/[^\w-]/g, ''),
+      neighborhood: String(r.neighborhood || '').slice(0, 100),
+      city: String(r.city || '').slice(0, 100),
+      incidentType: r.incidentType,
+      severity: r.severity,
+      description: String(r.description || '').slice(0, 500),
+      reportedAt: String(r.reportedAt || 'Just now').slice(0, 50),
+      upvotes: typeof r.upvotes === 'number' ? Math.max(0, r.upvotes) : 0,
+      status: r.status === 'investigating' || r.status === 'mitigated' ? r.status : 'active',
+      reporterName: String(r.reporterName || 'Neighbor').slice(0, 100),
+    }));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sanitized));
   } catch (err) {
     console.error('Failed to save community reports:', err);
   }

@@ -133,14 +133,15 @@ export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city, language }
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-300">Pledged Families:</label>
+            <label htmlFor="watch-society-families" className="text-xs font-bold text-slate-300">Pledged Families:</label>
             <input
+              id="watch-society-families"
               type="range"
               min={5}
               max={150}
               step={5}
               value={societyFamiliesCount}
-              onChange={(e) => setSocietyFamiliesCount(parseInt(e.target.value, 10))}
+              onChange={(e) => setSocietyFamiliesCount(Number.parseInt(e.target.value, 10))}
               className="w-28 h-2 rounded-lg bg-slate-800 accent-emerald-500"
             />
             <span className="text-sm font-black text-emerald-400 w-8">{societyFamiliesCount}</span>
@@ -195,10 +196,11 @@ export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city, language }
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+              <label htmlFor="watch-neighborhood" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
                 Neighborhood / Colony
               </label>
               <input
+                id="watch-neighborhood"
                 type="text"
                 required
                 value={neighborhood}
@@ -209,10 +211,11 @@ export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city, language }
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+              <label htmlFor="watch-incident-type" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
                 Incident Category
               </label>
               <select
+                id="watch-incident-type"
                 value={incidentType}
                 onChange={(e) => setIncidentType(e.target.value as IncidentType)}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -226,10 +229,11 @@ export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city, language }
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+              <label htmlFor="watch-severity" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
                 Severity Level
               </label>
               <select
+                id="watch-severity"
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value as IncidentSeverity)}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -242,10 +246,11 @@ export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city, language }
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+            <label htmlFor="watch-description" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
               Description &amp; Landmark
             </label>
             <textarea
+              id="watch-description"
               required
               rows={2}
               value={description}

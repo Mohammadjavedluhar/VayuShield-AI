@@ -16,9 +16,9 @@ export function fallbackIntake(text: string, cityHint?: string): z.infer<typeof 
 
   // Family size extraction
   let householdSize = 4;
-  const sizeMatch = lower.match(/(?:family of|household of|living with)\s*(\d+)/i) || lower.match(/(\d+)\s*(?:people|members|adults|kids|family)/i);
-  if (sizeMatch && sizeMatch[1]) {
-    householdSize = Math.max(1, Math.min(15, parseInt(sizeMatch[1], 10)));
+  const sizeMatch = /(?:family|household|living with)[^\d]{0,20}(\d{1,2})/i.exec(lower) || /(\d{1,2})[^\d]{0,15}(?:people|members|adults|kids|family)/i.exec(lower);
+  if (sizeMatch?.[1]) {
+    householdSize = Math.max(1, Math.min(15, Number.parseInt(sizeMatch[1], 10)));
   }
 
   // City detection
@@ -49,9 +49,9 @@ export function fallbackIntake(text: string, cityHint?: string): z.infer<typeof 
 
   // Commute distance
   let commuteDistanceKm = 12;
-  const distMatch = lower.match(/(\d+)\s*(?:km|kms|kilometers|miles)/i);
-  if (distMatch && distMatch[1]) {
-    commuteDistanceKm = Math.min(100, Math.max(1, parseInt(distMatch[1], 10)));
+  const distMatch = /(\d{1,3})[^\d]{0,10}(?:km|kms|kilometers|miles)/i.exec(lower);
+  if (distMatch?.[1]) {
+    commuteDistanceKm = Math.min(100, Math.max(1, Number.parseInt(distMatch[1], 10)));
   }
 
   // Cooking & Heating

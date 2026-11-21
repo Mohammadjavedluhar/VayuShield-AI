@@ -62,12 +62,12 @@ function isNumberMatch(num: number, certifiedValues: number[], toleranceRatio: n
  */
 export function extractNumbersFromText(text: string): number[] {
   // Normalize numbers formatted with thousand separators (e.g. 2,800 or 14,000)
-  const normalized = text.replace(/(\d+),(\d+)/g, '$1$2');
+  const normalized = text.replace(/\b(\d{1,3}),(\d{3})\b/g, '$1$2');
   // Matches numbers including decimals and optional signs, e.g. 14.5, 85%, 2.5
   const matches = normalized.match(/-?\b\d+(?:\.\d+)?\b/g);
   if (!matches) return [];
   return matches
-    .map((m) => parseFloat(m))
+    .map((m) => Number.parseFloat(m))
     .filter((n) => !Number.isNaN(n));
 }
 

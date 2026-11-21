@@ -34,12 +34,17 @@ export async function searchCities(query: string): Promise<CityLocation[]> {
     c.country.toLowerCase().includes(trimmed.toLowerCase())
   );
 
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-      trimmed
-    )}&format=json&addressdetails=1&limit=5`;
+  const cleanQuery = trimmed.replace(/[^a-zA-Z0-9\s,.-]/g, '').slice(0, 60);
+  if (cleanQuery.length < 2) return matchingPresets;
 
-    const res = await fetch(url, {
+  try {
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('q', cleanQuery);
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('addressdetails', '1');
+    url.searchParams.set('limit', '5');
+
+    const res = await fetch(url.toString(), {
       headers: {
         'Accept-Language': 'en',
       },
@@ -52,8 +57,8 @@ export async function searchCities(query: string): Promise<CityLocation[]> {
       name: item.name || item.display_name.split(',')[0],
       country: item.address?.country || '',
       region: item.address?.state || item.address?.county || '',
-      latitude: parseFloat(item.lat),
-      longitude: parseFloat(item.lon),
+      latitude: Number.parseFloat(item.lat),
+      longitude: Number.parseFloat(item.lon),
     }));
 
     // Merge without duplicates

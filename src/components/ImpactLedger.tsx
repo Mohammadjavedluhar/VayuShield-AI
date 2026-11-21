@@ -172,9 +172,10 @@ export const ImpactLedger: React.FC<ImpactLedgerProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Toggle: N95 Mask */}
-          <div
+          <button
+            type="button"
             onClick={() => handleToggle('useN95Mask')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+            className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
               interventions.useN95Mask
                 ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-900 dark:text-cyan-100'
                 : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-500'
@@ -200,12 +201,13 @@ export const ImpactLedger: React.FC<ImpactLedgerProps> = ({
             >
               <div className="w-4 h-4 rounded-full bg-white shadow-md" />
             </div>
-          </div>
+          </button>
 
           {/* Toggle: Air Purifier */}
-          <div
+          <button
+            type="button"
             onClick={() => handleToggle('useAirPurifier')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+            className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
               interventions.useAirPurifier
                 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-900 dark:text-emerald-100'
                 : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-500'
@@ -235,12 +237,13 @@ export const ImpactLedger: React.FC<ImpactLedgerProps> = ({
             >
               <div className="w-4 h-4 rounded-full bg-white shadow-md" />
             </div>
-          </div>
+          </button>
 
           {/* Toggle: Weatherstripping */}
-          <div
+          <button
+            type="button"
             onClick={() => handleToggle('roomSealImprovement')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+            className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
               interventions.roomSealImprovement
                 ? 'bg-amber-500/10 border-amber-500/40 text-amber-900 dark:text-amber-100'
                 : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-500'
@@ -272,12 +275,13 @@ export const ImpactLedger: React.FC<ImpactLedgerProps> = ({
             >
               <div className="w-4 h-4 rounded-full bg-white shadow-md" />
             </div>
-          </div>
+          </button>
 
           {/* Toggle: Wet Mopping */}
-          <div
+          <button
+            type="button"
             onClick={() => handleToggle('wetMoppingDaily')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+            className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
               interventions.wetMoppingDaily
                 ? 'bg-teal-500/10 border-teal-500/40 text-teal-900 dark:text-teal-100'
                 : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-500'
@@ -309,7 +313,7 @@ export const ImpactLedger: React.FC<ImpactLedgerProps> = ({
             >
               <div className="w-4 h-4 rounded-full bg-white shadow-md" />
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Commute Swap Selector */}

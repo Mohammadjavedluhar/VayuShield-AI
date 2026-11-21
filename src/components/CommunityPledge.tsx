@@ -50,14 +50,14 @@ Our household is avoiding ${metrics.avoidedCigarettesPerWeek} cigarettes-equival
 Join the Clean Air Movement & protect your family: https://vayushield-ai.vercel.app`;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(shareText);
+    void navigator.clipboard.writeText(shareText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
   const handleWhatsApp = () => {
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (

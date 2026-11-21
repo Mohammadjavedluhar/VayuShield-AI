@@ -98,16 +98,17 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           {/* Slider 1: Commute Distance */}
           <div>
             <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              <span>One-Way Commute Distance: {commuteDistanceKm} km</span>
+              <label htmlFor="whatif-commute-distance">One-Way Commute Distance: {commuteDistanceKm} km</label>
               <span className="text-slate-400">Round trip: {commuteDistanceKm * 2} km</span>
             </div>
             <input
+              id="whatif-commute-distance"
               type="range"
               min={2}
               max={40}
               step={1}
               value={commuteDistanceKm}
-              onChange={(e) => setCommuteDistanceKm(parseInt(e.target.value, 10))}
+              onChange={(e) => setCommuteDistanceKm(Number.parseInt(e.target.value, 10))}
               className="w-full h-2 rounded-lg bg-slate-200 dark:bg-slate-800 accent-cyan-500"
             />
           </div>
@@ -115,18 +116,19 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           {/* Slider 2: Purifier Runtime Hours */}
           <div>
             <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              <span>Air Purifier / CR Box Runtime: {purifierHours} hours / day</span>
+              <label htmlFor="whatif-purifier-hours">Air Purifier / CR Box Runtime: {purifierHours} hours / day</label>
               <span className="text-cyan-500 font-extrabold">
                 {purifierHours >= 20 ? 'Continuous Clean' : purifierHours >= 12 ? 'Overnight + Evening' : 'Part-time'}
               </span>
             </div>
             <input
+              id="whatif-purifier-hours"
               type="range"
               min={0}
               max={24}
               step={1}
               value={purifierHours}
-              onChange={(e) => setPurifierHours(parseInt(e.target.value, 10))}
+              onChange={(e) => setPurifierHours(Number.parseInt(e.target.value, 10))}
               className="w-full h-2 rounded-lg bg-slate-200 dark:bg-slate-800 accent-emerald-500"
             />
           </div>
@@ -134,10 +136,11 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           {/* Commute Mode Selector */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
             <div>
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+              <label htmlFor="whatif-commute-mode" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
                 Commute Transition
               </label>
               <select
+                id="whatif-commute-mode"
                 value={commuteMode}
                 onChange={(e) => setCommuteMode(e.target.value as CommuteMode)}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -151,10 +154,11 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+              <label htmlFor="whatif-mask-grade" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
                 Outdoor Mask Grade
               </label>
               <select
+                id="whatif-mask-grade"
                 value={maskGrade}
                 onChange={(e) => setMaskGrade(e.target.value as MaskGrade)}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -167,10 +171,11 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+              <label htmlFor="whatif-cooking-fuel" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
                 Kitchen Cooking Fuel
               </label>
               <select
+                id="whatif-cooking-fuel"
                 value={cookingFuel}
                 onChange={(e) => setCookingFuel(e.target.value as CookingFuel)}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"

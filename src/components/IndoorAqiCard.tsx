@@ -161,10 +161,11 @@ export const IndoorAqiCard: React.FC<IndoorAqiCardProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Window Sealing */}
           <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+            <label htmlFor="indoor-window-seal" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
               Window &amp; Balcony Seal (P)
             </label>
             <select
+              id="indoor-window-seal"
               value={windowSeal}
               onChange={(e) => setWindowSeal(e.target.value as WindowSealType)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -178,10 +179,11 @@ export const IndoorAqiCard: React.FC<IndoorAqiCardProps> = ({
 
           {/* Cooking Fuel */}
           <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+            <label htmlFor="indoor-cooking-fuel" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
               Kitchen Cooking Source
             </label>
             <select
+              id="indoor-cooking-fuel"
               value={cookingFuel}
               onChange={(e) => setCookingFuel(e.target.value as IndoorCookingType)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -195,10 +197,11 @@ export const IndoorAqiCard: React.FC<IndoorAqiCardProps> = ({
 
           {/* Incense Usage */}
           <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+            <label htmlFor="indoor-incense-usage" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
               Puja Incense / Agarbatti
             </label>
             <select
+              id="indoor-incense-usage"
               value={incenseUsage}
               onChange={(e) => setIncenseUsage(e.target.value as IncenseType)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
@@ -211,10 +214,11 @@ export const IndoorAqiCard: React.FC<IndoorAqiCardProps> = ({
 
           {/* Air Purifier */}
           <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+            <label htmlFor="indoor-air-purifier" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
               Active Air Purifier
             </label>
             <select
+              id="indoor-air-purifier"
               value={airPurifier}
               onChange={(e) => setAirPurifier(e.target.value as AirPurifierType)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"

@@ -1,16 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Award,
-  CheckCircle2,
-  Clock,
-  Eye,
-  Flame,
-  HelpCircle,
-  Leaf,
-  Shield,
   ShieldAlert,
   Sparkles,
-  Users,
   Wind,
 } from 'lucide-react';
 import { Navbar } from './components/Navbar';
@@ -124,7 +115,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadAirQuality(location.lat, location.lon, currentCity);
+    void loadAirQuality(location.lat, location.lon, currentCity);
   }, [location.lat, location.lon, currentCity]);
 
   // Real-time deterministic impact ledger calculation
@@ -251,7 +242,7 @@ export default function App() {
 
   const handleResetPreset = () => {
     setActivePresetId(undefined);
-    loadAirQuality(location.lat, location.lon, currentCity);
+    void loadAirQuality(location.lat, location.lon, currentCity);
   };
 
   // Handlers
@@ -328,7 +319,7 @@ export default function App() {
         isDark={isDark}
         onToggleTheme={() => setIsDark(!isDark)}
         onCitySelect={handleCitySelect}
-        onRefresh={() => loadAirQuality(location.lat, location.lon, currentCity)}
+        onRefresh={() => { void loadAirQuality(location.lat, location.lon, currentCity); }}
         onOpenCrModal={() => setIsCrModalOpen(true)}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -391,9 +382,10 @@ export default function App() {
             )}
             {/* Quick feature links banner for judge evaluation */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div
+              <button
+                type="button"
                 onClick={() => setActiveTab('commute')}
-                className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 hover:border-amber-500/40 cursor-pointer transition-all group"
+                className="w-full text-left p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 hover:border-amber-500/40 cursor-pointer transition-all group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -413,11 +405,12 @@ export default function App() {
                     Open &rarr;
                   </span>
                 </div>
-              </div>
+              </button>
 
-              <div
+              <button
+                type="button"
                 onClick={() => setActiveTab('indoor')}
-                className="p-5 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-500/20 hover:border-cyan-500/40 cursor-pointer transition-all group"
+                className="w-full text-left p-5 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-500/20 hover:border-cyan-500/40 cursor-pointer transition-all group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -437,7 +430,7 @@ export default function App() {
                     Open &rarr;
                   </span>
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* Embedded timeline preview for convenience */}
