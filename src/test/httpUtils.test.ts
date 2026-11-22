@@ -33,6 +33,12 @@ describe('HTTP Utilities & Security - httpUtils.ts', () => {
       socket: { remoteAddress: '10.0.0.1' },
     } as unknown as ExtendedRequest;
     expect(getClientIp(req2)).toBe('10.0.0.1');
+
+    // Array forwarded header
+    const reqArray = {
+      headers: { 'x-forwarded-for': ['203.0.113.55', '10.0.0.2'] },
+    } as unknown as ExtendedRequest;
+    expect(getClientIp(reqArray)).toBe('203.0.113.55');
   });
 
   it('parses JSON body when already parsed as object or string', async () => {
@@ -43,6 +49,10 @@ describe('HTTP Utilities & Security - httpUtils.ts', () => {
     const reqStr = { body: '{"city":"Jaipur"}' } as unknown as ExtendedRequest;
     const resStr = await parseRequestBody(reqStr);
     expect(resStr).toEqual({ city: 'Jaipur' });
+
+    const reqInvalidStr = { body: '{"invalid:json' } as unknown as ExtendedRequest;
+    const resInvalid = await parseRequestBody(reqInvalidStr);
+    expect(resInvalid).toEqual({});
   });
 
   it('parses streamed incoming request chunks', async () => {
@@ -87,6 +97,21 @@ describe('HTTP Utilities & Security - httpUtils.ts', () => {
     expect(headers['X-Content-Type-Options']).toBe('nosniff');
     expect(headers['X-Frame-Options']).toBe('DENY');
     expect(JSON.parse(output)).toEqual({ success: true });
+
+    // Chained res.status().json() path
+    let chainedStatus = 0;
+    let chainedData: any = null;
+    const chainedRes = {
+      status: (code: number) => ({
+        json: (data: any) => {
+          chainedStatus = code;
+          chainedData = data;
+        },
+      }),
+    } as unknown as ExtendedResponse;
+    sendJson(chainedRes, 201, { created: true });
+    expect(chainedStatus).toBe(201);
+    expect(chainedData).toEqual({ created: true });
   });
 
   it('applies secure CORS only to permitted origins', () => {
@@ -116,5 +141,44 @@ describe('HTTP Utilities & Security - httpUtils.ts', () => {
 
     applyCorsHeaders(reqUntrusted, resUntrusted);
     expect(headersUntrusted['Access-Control-Allow-Origin']).toBeUndefined();
+
+    // Localhost origin support
+    const reqLocalhost = {
+      headers: { origin: 'http://localhost:5173' },
+    } as unknown as ExtendedRequest;
+    const headersLocalhost: Record<string, string> = {};
+    const resLocalhost = {
+      setHeader: (k: string, v: string) => {
+        headersLocalhost[k] = v;
+      },
+    } as unknown as ExtendedResponse;
+    applyCorsHeaders(reqLocalhost, resLocalhost);
+    expect(headersLocalhost['Access-Control-Allow-Origin']).toBe('http://localhost:5173');
+  });
+
+  it('handles stream errors and invalid or whitespace-only bodies in parseRequestBody', async () => {
+    // Whitespace only stream
+    const reqWhitespace = new EventEmitter() as unknown as ExtendedRequest;
+    const wsPromise = parseRequestBody(reqWhitespace);
+    reqWhitespace.emit('data', Buffer.from('   \n  '));
+    reqWhitespace.emit('end');
+    expect(await wsPromise).toEqual({});
+
+    // Invalid JSON stream
+    const reqInvalid = new EventEmitter() as unknown as ExtendedRequest;
+    const invPromise = parseRequestBody(reqInvalid);
+    reqInvalid.emit('data', Buffer.from('{invalid json'));
+    reqInvalid.emit('end');
+    expect(await invPromise).toEqual({});
+
+    // Stream error
+    const reqErr = new EventEmitter() as unknown as ExtendedRequest;
+    const errPromise = parseRequestBody(reqErr);
+    reqErr.emit('error', new Error('Network stream aborted'));
+    await expect(errPromise).rejects.toThrow('Network stream aborted');
+
+    // getClientIp fallback to 127.0.0.1
+    const reqNoIp = { headers: {} } as unknown as ExtendedRequest;
+    expect(getClientIp(reqNoIp)).toBe('127.0.0.1');
   });
 });

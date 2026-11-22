@@ -44,6 +44,9 @@ export function calculatePollutantAqi(concentration: number, breakpoints: AqiBre
   label: string;
 } {
   const conc = Math.max(0, concentration);
+  if (!breakpoints || breakpoints.length === 0) {
+    return { aqi: 0, category: 'good', label: 'Good' };
+  }
 
   // If beyond upper bracket (severe winter inversion)
   const lastBracket = breakpoints[breakpoints.length - 1];
