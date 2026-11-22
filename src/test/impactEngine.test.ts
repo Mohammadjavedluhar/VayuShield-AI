@@ -13,6 +13,10 @@ import { HouseholdProfile, Interventions } from '../domain/types';
 
 describe('Deterministic Impact Engine - impactEngine.ts', () => {
   describe('1. Berkeley Earth Cigarette Equivalence', () => {
+    it('cites Berkeley Earth 528 ug-hours per cigarette constant', () => {
+      expect(BERKELEY_EARTH_UG_HOURS_PER_CIGARETTE).toBe(528);
+    });
+
     it('returns 0 for non-positive values or zero hours', () => {
       expect(calculateCigaretteEquivalents(0, 24)).toBe(0);
       expect(calculateCigaretteEquivalents(-50, 24)).toBe(0);

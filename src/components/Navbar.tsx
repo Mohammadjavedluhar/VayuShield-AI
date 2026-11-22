@@ -138,9 +138,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="px-3 py-1 text-xs font-semibold uppercase text-slate-400 tracking-wider">
                   Presets & Results
                 </div>
-                {(searchResults.length > 0 ? searchResults : PRESET_CITIES).map((c, idx) => (
+                {(searchResults.length > 0 ? searchResults : PRESET_CITIES).map((c) => (
                   <button
-                    key={`${c.name}-${idx}`}
+                    key={`${c.name}-${c.latitude}-${c.longitude}`}
+                    type="button"
                     onClick={() => selectCity(c)}
                     className="w-full text-left px-3 py-2 flex items-center justify-between text-sm hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-200 transition-colors"
                   >

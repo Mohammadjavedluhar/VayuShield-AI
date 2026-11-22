@@ -1,13 +1,8 @@
 import React, { useState } from 'react';
 import {
-  AlertCircle,
   Building,
-  CheckCircle2,
   Flame,
-  MessageSquare,
   Plus,
-  Send,
-  Share2,
   ThumbsUp,
   Truck,
   Users,
@@ -21,14 +16,14 @@ import {
   IncidentType,
   saveStoredReports,
 } from '../domain/communityReports';
-import { Language, translations } from '../i18n/translations';
+import { Language } from '../i18n/translations';
 
 interface CommunityWatchProps {
   city: string;
-  language: Language;
+  language?: Language;
 }
 
-export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city, language }) => {
+export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city }) => {
   const [reports, setReports] = useState<CommunityReport[]>(getStoredReports());
   const [showAddForm, setShowAddForm] = useState(false);
   const [societyFamiliesCount, setSocietyFamiliesCount] = useState<number>(25);
@@ -194,7 +189,7 @@ export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city, language }
             Log Hyperlocal Smog Trigger
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label htmlFor="watch-neighborhood" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
                 Neighborhood / Colony
@@ -206,6 +201,20 @@ export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city, language }
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
                 placeholder="e.g. Anand Vihar, Rohini Sec 16"
+                className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="watch-reporter" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                Reporter / Society
+              </label>
+              <input
+                id="watch-reporter"
+                type="text"
+                value={reporterName}
+                onChange={(e) => setReporterName(e.target.value)}
+                placeholder="e.g. Verma Family / Flat 402"
                 className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
               />
             </div>

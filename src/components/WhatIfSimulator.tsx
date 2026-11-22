@@ -1,46 +1,34 @@
 import React, { useRef, useState } from 'react';
 import {
-  Award,
-  Bike,
-  Building,
   CheckCircle2,
-  Download,
-  Flame,
-  Leaf,
   Printer,
-  Share2,
-  Shield,
   ShieldAlert,
-  ShieldCheck,
   Sliders,
-  Sparkles,
-  Train,
-  Zap,
 } from 'lucide-react';
 import { runWhatIfSimulation } from '../domain/simulator';
 import { CommuteMode, CookingFuel, HouseholdProfile } from '../domain/types';
 import { MaskGrade } from '../domain/commuteGuard';
-import { Language, translations } from '../i18n/translations';
+import { Language } from '../i18n/translations';
 
 interface WhatIfSimulatorProps {
   ambientPm25: number;
   profile: HouseholdProfile;
   city: string;
-  language: Language;
+  language?: Language;
 }
 
 export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
   ambientPm25,
   profile,
   city,
-  language,
 }) => {
   const [commuteDistanceKm, setCommuteDistanceKm] = useState<number>(profile.commuteDistanceKm || 12);
-  const [commuteDays, setCommuteDays] = useState<number>(5);
+  const commuteDays = 5;
   const [commuteMode, setCommuteMode] = useState<CommuteMode>('metro');
   const [purifierHours, setPurifierHours] = useState<number>(18);
   const [maskGrade, setMaskGrade] = useState<MaskGrade>('n95');
   const [cookingFuel, setCookingFuel] = useState<CookingFuel>('induction');
+  const [todayDate] = useState(() => 'Winter 2025-2026');
 
   const printPlanRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +67,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={handlePrintPlan}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg shadow-cyan-600/20 hover:opacity-95 transition self-start sm:self-auto"
         >
@@ -254,7 +243,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
 
           <div className="text-left sm:text-right text-xs text-slate-500">
             <div>Household: <strong>{profile.householdSize} members</strong></div>
-            <div>Date: <strong>{new Date().toLocaleDateString()}</strong></div>
+            <div>Date: <strong>{todayDate}</strong></div>
           </div>
         </div>
 

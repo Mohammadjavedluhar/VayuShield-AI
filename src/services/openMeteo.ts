@@ -36,7 +36,6 @@ export async function fetchAirQualityData(
     const pm25Arr = hourly.pm2_5 || [];
     const pm10Arr = hourly.pm10 || [];
     const no2Arr = hourly.nitrogen_dioxide || [];
-    const aqiArr = hourly.us_aqi || [];
 
     // Find current hour index or start from 0
     const nowIso = new Date().toISOString().slice(0, 13);

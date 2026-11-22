@@ -20,6 +20,8 @@ describe('School & Elderly Morning Commute Guard - commuteGuard.ts', () => {
   });
 
   it('calculates mode penetration: closed car drops penetration to 40% vs 100% open', () => {
+    expect(MASK_EFFICIENCY.n95).toBe(0.95);
+    expect(MASK_EFFICIENCY.surgical).toBe(0.35);
     expect(TRAVEL_MODE_PENETRATION.closed_car).toBe(0.40);
     expect(TRAVEL_MODE_PENETRATION.metro).toBe(0.30);
     expect(TRAVEL_MODE_PENETRATION.open_walk_cycle).toBe(1.0);

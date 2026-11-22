@@ -1,6 +1,14 @@
 import { executeAiCascade } from './_lib/aiCascade';
 import { fallbackAsk } from './_lib/deterministicFallbacks';
-import { parseRequestBody, sendJson } from './_lib/httpUtils';
+import {
+  applyCorsHeaders,
+  checkRateLimit,
+  getClientIp,
+  parseRequestBody,
+  sendJson,
+  type ExtendedRequest,
+  type ExtendedResponse,
+} from './_lib/httpUtils';
 import { AskRequestSchema } from './_lib/types';
 import { verifyAndSanitizeText } from '../src/domain/numbersGuard';
 import { z } from 'zod';
@@ -10,13 +18,27 @@ const AskResponseSchema = z.object({
   recommendations: z.array(z.string()).default([]),
 });
 
-export default async function handler(req: any, res: any) {
+/**
+ * Serverless API handler for grounded clinical and air quality inquiries.
+ */
+export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
+  applyCorsHeaders(req, res);
+
   if (req.method === 'OPTIONS') {
-    return sendJson(res, 200, { ok: true });
+    sendJson(res, 200, { ok: true });
+    return;
   }
 
   if (req.method !== 'POST') {
-    return sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
+    sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
+    return;
+  }
+
+  const clientIp = getClientIp(req);
+  const rateCheck = checkRateLimit(clientIp);
+  if (!rateCheck.allowed) {
+    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+    return;
   }
 
   try {
@@ -24,10 +46,11 @@ export default async function handler(req: any, res: any) {
     const parsedInput = AskRequestSchema.safeParse(rawBody);
 
     if (!parsedInput.success) {
-      return sendJson(res, 400, {
+      sendJson(res, 400, {
         error: 'Invalid request body',
         details: parsedInput.error.format(),
       });
+      return;
     }
 
     const { question, context } = parsedInput.data;
@@ -75,7 +98,7 @@ Live Local Air Context:
       ...(context?.ledger || {}),
     });
 
-    return sendJson(res, 200, {
+    sendJson(res, 200, {
       answer: guard.cleanedText,
       recommendations: cascadeResult.data.recommendations,
       isGrounded: guard.isFullyGrounded,
@@ -83,10 +106,11 @@ Live Local Air Context:
       modelUsed: cascadeResult.modelUsed,
       latencyMs: cascadeResult.latencyMs,
     });
-  } catch (error: any) {
-    console.error('[API /api/ask error]', error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[API /api/ask error]', errorMsg);
     const fallback = fallbackAsk('General advice', {});
-    return sendJson(res, 200, {
+    sendJson(res, 200, {
       answer: fallback.answer,
       recommendations: [
         'Use certified N95 masks outdoors.',

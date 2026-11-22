@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import {
-  AlertCircle,
   Bot,
   CheckCircle2,
-  HelpCircle,
   Send,
   ShieldCheck,
   Sparkles,
@@ -159,8 +157,8 @@ export const AskAssistant: React.FC<AskAssistantProps> = ({
                   <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Key Recommendations:
                   </div>
-                  {msg.recommendations.map((rec, i) => (
-                    <div key={i} className="flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+                  {msg.recommendations.map((rec) => (
+                    <div key={`${msg.id}-rec-${rec.slice(0, 15)}`} className="flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-300">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                       <span>{rec}</span>
                     </div>
@@ -197,9 +195,10 @@ export const AskAssistant: React.FC<AskAssistantProps> = ({
       {/* Suggested Quick Prompt Chips */}
       <div className="py-2 shrink-0">
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {quickQuestions.map((q, idx) => (
+          {quickQuestions.map((q) => (
             <button
-              key={idx}
+              key={`quick-q-${q.slice(0, 20)}`}
+              type="button"
               onClick={() => handleSend(q)}
               className="text-left text-xs px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition whitespace-nowrap flex items-center gap-1.5 shrink-0"
             >

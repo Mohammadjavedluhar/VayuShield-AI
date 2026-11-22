@@ -126,11 +126,10 @@ export async function executeAiCascade<T>(
 
   // --- TIER 2: Primary Call to gemini-2.5-flash with Retry ---
   const primaryModel = 'gemini-2.5-flash';
-  let tier2Error: unknown = null;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const contents: unknown[] = [];
+      const contents: Array<{ text?: string; inlineData?: { data: string; mimeType: string } }> = [];
       if (options.systemInstruction) {
         contents.push({ text: `System Instructions: ${options.systemInstruction}` });
       }
@@ -141,7 +140,7 @@ export async function executeAiCascade<T>(
 
       const response = await client.models.generateContent({
         model: primaryModel,
-        contents: contents as any,
+        contents: contents as unknown as Parameters<typeof client.models.generateContent>[0]['contents'],
         config: {
           temperature: options.temperature ?? 0.2,
           responseMimeType: 'application/json',
@@ -161,9 +160,9 @@ export async function executeAiCascade<T>(
           latencyMs: Date.now() - startTime,
         };
       }
-    } catch (err: any) {
-      tier2Error = err;
-      console.warn(`[VayuShield AI Cascade] Attempt ${attempt} failed on ${primaryModel}:`, err?.message || err);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[VayuShield AI Cascade] Attempt ${attempt} failed on ${primaryModel}:`, errMsg);
       if (attempt === 1) {
         await sleep(600); // Small backoff before retry
       }
@@ -175,7 +174,7 @@ export async function executeAiCascade<T>(
   try {
     console.info(`[VayuShield AI Cascade] Cascading to Tier 3 fallback model: ${fallbackModel}`);
 
-    const contents: unknown[] = [];
+    const contents: Array<{ text?: string; inlineData?: { data: string; mimeType: string } }> = [];
     if (options.systemInstruction) {
       contents.push({ text: `System Instructions: ${options.systemInstruction}` });
     }
@@ -186,7 +185,7 @@ export async function executeAiCascade<T>(
 
     const response = await client.models.generateContent({
       model: fallbackModel,
-      contents: contents as any,
+      contents: contents as unknown as Parameters<typeof client.models.generateContent>[0]['contents'],
       config: {
         temperature: options.temperature ?? 0.2,
         responseMimeType: 'application/json',
@@ -206,8 +205,9 @@ export async function executeAiCascade<T>(
         latencyMs: Date.now() - startTime,
       };
     }
-  } catch (tier3Err: any) {
-    console.warn(`[VayuShield AI Cascade] Tier 3 (${fallbackModel}) failed:`, tier3Err?.message || tier3Err);
+  } catch (tier3Err: unknown) {
+    const errMsg = tier3Err instanceof Error ? tier3Err.message : String(tier3Err);
+    console.warn(`[VayuShield AI Cascade] Tier 3 (${fallbackModel}) failed:`, errMsg);
   }
 
   // --- TIER 4: Deterministic Rule-Based Template Fallback ---

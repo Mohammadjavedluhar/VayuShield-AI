@@ -13,7 +13,8 @@ import { ImpactLedger } from './components/ImpactLedger';
 import { CommunityPledge } from './components/CommunityPledge';
 import { AskAssistant } from './components/AskAssistant';
 import { CorsiRosenthalModal } from './components/CorsiRosenthalModal';
-import { JudgeDemoBar, DemoPreset } from './components/JudgeDemoBar';
+import { JudgeDemoBar } from './components/JudgeDemoBar';
+import { DemoPreset } from './domain/demoPresets';
 import { CommuteGuardCard } from './components/CommuteGuardCard';
 import { IndoorAqiCard } from './components/IndoorAqiCard';
 import { CommunityWatch } from './components/CommunityWatch';
@@ -115,7 +116,26 @@ export default function App() {
   };
 
   useEffect(() => {
-    void loadAirQuality(location.lat, location.lon, currentCity);
+    let isCancelled = false;
+    const fetchAqi = async () => {
+      setIsLoadingAqi(true);
+      try {
+        const data = await fetchAirQualityData(location.lat, location.lon, currentCity);
+        if (!isCancelled) {
+          setAirQuality(data);
+        }
+      } catch (err) {
+        console.error('Failed to load air quality:', err);
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingAqi(false);
+        }
+      }
+    };
+    void fetchAqi();
+    return () => {
+      isCancelled = true;
+    };
   }, [location.lat, location.lon, currentCity]);
 
   // Real-time deterministic impact ledger calculation
@@ -372,6 +392,11 @@ export default function App() {
         {/* Tab 1: Live Smog Monitor */}
         {activeTab === 'monitor' && (
           <div className="space-y-8 animate-fade-in">
+            {isLoadingAqi && (
+              <div className="w-full h-1 bg-cyan-500/20 overflow-hidden rounded-full mb-3" role="status" aria-label="Updating air quality telemetry">
+                <div className="w-1/3 h-full bg-cyan-500 animate-pulse" />
+              </div>
+            )}
             {airQuality ? (
               <LiveAqiCard data={airQuality} language={language} />
             ) : (

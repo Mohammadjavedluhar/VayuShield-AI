@@ -1,16 +1,8 @@
 import React, { useState } from 'react';
 import {
-  AlertTriangle,
-  ArrowRight,
   CheckCircle2,
   Cpu,
-  Flame,
-  Home,
-  ShieldCheck,
-  Sparkles,
-  Wind,
   Wrench,
-  Zap,
 } from 'lucide-react';
 import {
   AirPurifierType,
@@ -21,27 +13,26 @@ import {
   WindowSealType,
 } from '../domain/indoorModel';
 import { getAqiColorTheme } from '../domain/airQuality';
-import { Language, translations } from '../i18n/translations';
+import { Language } from '../i18n/translations';
 
 interface IndoorAqiCardProps {
   outdoorPm25: number;
   city: string;
-  language: Language;
+  language?: Language;
   onOpenCrModal: () => void;
 }
 
 export const IndoorAqiCard: React.FC<IndoorAqiCardProps> = ({
   outdoorPm25,
   city,
-  language,
   onOpenCrModal,
 }) => {
   const [windowSeal, setWindowSeal] = useState<WindowSealType>('standard_closed');
   const [cookingFuel, setCookingFuel] = useState<IndoorCookingType>('lpg_unvented');
   const [incenseUsage, setIncenseUsage] = useState<IncenseType>('single_stick');
-  const [ventilationRate, setVentilationRate] = useState<VentilationRateType>('moderate_natural');
+  const ventilationRate: VentilationRateType = 'moderate_natural';
   const [airPurifier, setAirPurifier] = useState<AirPurifierType>('diy_corsi_rosenthal');
-  const [roomAreaSqFt, setRoomAreaSqFt] = useState<number>(220);
+  const roomAreaSqFt = 220;
 
   const result = estimateIndoorAirQuality({
     outdoorPm25,
@@ -267,8 +258,8 @@ export const IndoorAqiCard: React.FC<IndoorAqiCardProps> = ({
             Targeted Fixes to Reach Clean Air (&lt;35 µg/m³)
           </span>
           <div className="space-y-2">
-            {result.actionSteps.map((step, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-xs">
+            {result.actionSteps.map((step) => (
+              <div key={`${step.title}-${step.action.slice(0, 15)}`} className="flex items-start gap-2 text-xs">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                 <div>
                   <strong className="text-slate-800 dark:text-slate-200">{step.title}: </strong>

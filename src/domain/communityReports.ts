@@ -93,11 +93,11 @@ export const PRESEEDED_COMMUNITY_REPORTS: CommunityReport[] = [
 const LOCAL_STORAGE_KEY = 'vayushield_community_reports';
 
 export function getStoredReports(): CommunityReport[] {
-  if (typeof window === 'undefined') return PRESEEDED_COMMUNITY_REPORTS;
+  if (typeof window === 'undefined' || !window.localStorage) return PRESEEDED_COMMUNITY_REPORTS;
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(PRESEEDED_COMMUNITY_REPORTS));
+      window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(PRESEEDED_COMMUNITY_REPORTS));
       return PRESEEDED_COMMUNITY_REPORTS;
     }
     return JSON.parse(raw);
@@ -107,7 +107,7 @@ export function getStoredReports(): CommunityReport[] {
 }
 
 export function saveStoredReports(reports: CommunityReport[]): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     if (!Array.isArray(reports)) return;
     const sanitized: CommunityReport[] = reports.slice(0, 50).map((r) => ({
@@ -122,7 +122,7 @@ export function saveStoredReports(reports: CommunityReport[]): void {
       status: r.status === 'investigating' || r.status === 'mitigated' ? r.status : 'active',
       reporterName: String(r.reporterName || 'Neighbor').slice(0, 100),
     }));
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sanitized));
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sanitized));
   } catch (err) {
     console.error('Failed to save community reports:', err);
   }

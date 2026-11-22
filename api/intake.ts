@@ -1,16 +1,38 @@
 import { executeAiCascade } from './_lib/aiCascade';
 import { fallbackIntake } from './_lib/deterministicFallbacks';
-import { parseRequestBody, sendJson } from './_lib/httpUtils';
+import {
+  applyCorsHeaders,
+  checkRateLimit,
+  getClientIp,
+  parseRequestBody,
+  sendJson,
+  type ExtendedRequest,
+  type ExtendedResponse,
+} from './_lib/httpUtils';
 import { IntakeRequestSchema, IntakeResponseSchema } from './_lib/types';
 import { calculateHouseholdVulnerability } from '../src/domain/impactEngine';
 
-export default async function handler(req: any, res: any) {
+/**
+ * Serverless API handler for structured family air vulnerability intake.
+ */
+export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
+  applyCorsHeaders(req, res);
+
   if (req.method === 'OPTIONS') {
-    return sendJson(res, 200, { ok: true });
+    sendJson(res, 200, { ok: true });
+    return;
   }
 
   if (req.method !== 'POST') {
-    return sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
+    sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
+    return;
+  }
+
+  const clientIp = getClientIp(req);
+  const rateCheck = checkRateLimit(clientIp);
+  if (!rateCheck.allowed) {
+    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+    return;
   }
 
   try {
@@ -18,10 +40,11 @@ export default async function handler(req: any, res: any) {
     const parsedInput = IntakeRequestSchema.safeParse(rawBody);
 
     if (!parsedInput.success) {
-      return sendJson(res, 400, {
+      sendJson(res, 400, {
         error: 'Invalid request body',
         details: parsedInput.error.format(),
       });
+      return;
     }
 
     const { text, cityHint } = parsedInput.data;
@@ -61,7 +84,7 @@ Extract the exact JSON object.`;
 
     const vulnerability = calculateHouseholdVulnerability(cascadeResult.data);
 
-    return sendJson(res, 200, {
+    sendJson(res, 200, {
       profile: {
         ...cascadeResult.data,
         rawInput: text,
@@ -73,10 +96,11 @@ Extract the exact JSON object.`;
       modelUsed: cascadeResult.modelUsed,
       latencyMs: cascadeResult.latencyMs,
     });
-  } catch (error: any) {
-    console.error('[API /api/intake error]', error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[API /api/intake error]', errorMsg);
     const fallback = fallbackIntake('Family of 4 in Delhi');
-    return sendJson(res, 200, {
+    sendJson(res, 200, {
       profile: {
         ...fallback,
         vulnerabilityScore: 60,

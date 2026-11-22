@@ -1,5 +1,13 @@
 import { executeAiCascade } from './_lib/aiCascade';
-import { parseRequestBody, sendJson } from './_lib/httpUtils';
+import {
+  applyCorsHeaders,
+  checkRateLimit,
+  getClientIp,
+  parseRequestBody,
+  sendJson,
+  type ExtendedRequest,
+  type ExtendedResponse,
+} from './_lib/httpUtils';
 import { PlanRequestSchema } from './_lib/types';
 import { calculateMasterImpactLedger } from '../src/domain/impactEngine';
 import { verifyAndSanitizeText, enforceGroundedMetrics } from '../src/domain/numbersGuard';
@@ -19,13 +27,27 @@ const ActionChecklistSchema = z.object({
   aiExplanation: z.string(),
 });
 
-export default async function handler(req: any, res: any) {
+/**
+ * Serverless API handler for synthesizing personalized household smog action plans.
+ */
+export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
+  applyCorsHeaders(req, res);
+
   if (req.method === 'OPTIONS') {
-    return sendJson(res, 200, { ok: true });
+    sendJson(res, 200, { ok: true });
+    return;
   }
 
   if (req.method !== 'POST') {
-    return sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
+    sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
+    return;
+  }
+
+  const clientIp = getClientIp(req);
+  const rateCheck = checkRateLimit(clientIp);
+  if (!rateCheck.allowed) {
+    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+    return;
   }
 
   try {
@@ -33,20 +55,34 @@ export default async function handler(req: any, res: any) {
     const parsedInput = PlanRequestSchema.safeParse(rawBody);
 
     if (!parsedInput.success) {
-      return sendJson(res, 400, {
+      sendJson(res, 400, {
         error: 'Invalid request body',
         details: parsedInput.error.format(),
       });
+      return;
     }
 
     const { profile, airQuality, interventions } = parsedInput.data;
     const currentPm25 = airQuality?.pm25 || 160;
 
     // 1. Calculate deterministic ground truth impact ledger
-    const groundTruthLedger = calculateMasterImpactLedger(currentPm25, profile, interventions);
+    const defaultInterventions = {
+      useN95Mask: true,
+      useAirPurifier: true,
+      commuteMode: 'metro' as const,
+      cookingFuel: 'induction' as const,
+      roomSealImprovement: true,
+      wetMoppingDaily: true,
+    };
+
+    const groundTruthLedger = calculateMasterImpactLedger(
+      currentPm25,
+      profile,
+      interventions || defaultInterventions
+    );
 
     // 2. Compute clean-hour routine windows based on live hourly forecast
-    const hourly: HourlyForecastItem[] = airQuality?.hourlyForecast || [];
+    const hourly: HourlyForecastItem[] = (airQuality?.hourlyForecast as HourlyForecastItem[]) || [];
     const windows: CleanHourWindow[] = computeCleanHourWindows(hourly, currentPm25);
 
     // 3. AI Cascade for contextual action checklist & personalized explanation
@@ -125,7 +161,7 @@ Create 4 to 5 high-priority action checklist tasks and a 2-sentence clinical exp
       currentAqi: airQuality?.currentAqi || 300,
     });
 
-    return sendJson(res, 200, {
+    sendJson(res, 200, {
       impactMetrics: enforceGroundedMetrics({}, groundTruthLedger),
       windows,
       actionChecklist: cascadeResult.data.actionChecklist,
@@ -135,30 +171,26 @@ Create 4 to 5 high-priority action checklist tasks and a 2-sentence clinical exp
       modelUsed: cascadeResult.modelUsed,
       latencyMs: cascadeResult.latencyMs,
     });
-  } catch (error: any) {
-    console.error('[API /api/plan error]', error);
-    return sendJson(res, 500, { error: 'Failed to generate plan.' });
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[API /api/plan error]', errorMsg);
+    sendJson(res, 500, { error: 'Failed to generate plan.' });
   }
 }
 
 function computeCleanHourWindows(hourly: HourlyForecastItem[], currentPm25: number): CleanHourWindow[] {
-  // If hourly forecast is empty, generate typical winter smog curve
   const dayHours = hourly.length >= 24 ? hourly.slice(0, 24) : generateDefaultHourly(currentPm25);
 
-  // Exercise window: look between 11:00 and 16:00
   const afternoonHours = dayHours.filter((h) => h.hour >= 11 && h.hour <= 16);
   const bestExerciseHour = afternoonHours.reduce((best, cur) => (cur.aqi < best.aqi ? cur : best), afternoonHours[0] || dayHours[14]);
 
-  // Commute window morning (7:00 to 9:30)
   const morningCommute = dayHours.filter((h) => h.hour >= 7 && h.hour <= 9);
   const avgMorningAqi = morningCommute.length > 0
     ? Math.round(morningCommute.reduce((s, h) => s + h.aqi, 0) / morningCommute.length)
     : 320;
 
-  // Ventilation window: best 1-hour afternoon slot
   const bestVentHour = bestExerciseHour;
 
-  // Sleep window (22:00 to 06:00)
   const nightHours = dayHours.filter((h) => h.hour >= 22 || h.hour <= 6);
   const avgNightAqi = nightHours.length > 0
     ? Math.round(nightHours.reduce((s, h) => s + h.aqi, 0) / nightHours.length)
@@ -213,7 +245,6 @@ function computeCleanHourWindows(hourly: HourlyForecastItem[], currentPm25: numb
 function generateDefaultHourly(basePm25: number): HourlyForecastItem[] {
   const items: HourlyForecastItem[] = [];
   for (let i = 0; i < 24; i++) {
-    // Winter diurnal curve: peaks at 7-9 AM and 9-11 PM, dips at 2-3 PM
     const diurnalFactor = 1 + 0.35 * Math.sin(((i - 8) * Math.PI) / 12) * -1;
     const pm = Math.max(20, Math.round(basePm25 * diurnalFactor));
     const aqi = Math.min(500, Math.round((pm / 150) * 200));

@@ -1,28 +1,52 @@
 import { executeAiCascade } from './_lib/aiCascade';
 import { fallbackVisionAudit } from './_lib/deterministicFallbacks';
-import { parseRequestBody, sendJson } from './_lib/httpUtils';
+import {
+  applyCorsHeaders,
+  checkRateLimit,
+  getClientIp,
+  parseRequestBody,
+  sendJson,
+  MAX_VISION_PAYLOAD_BYTES,
+  type ExtendedRequest,
+  type ExtendedResponse,
+} from './_lib/httpUtils';
 import { VisionAuditResponseSchema, VisionRequestSchema } from './_lib/types';
 import { calculateCorsiRosenthalSizing } from '../src/domain/impactEngine';
 import { verifyAndSanitizeText } from '../src/domain/numbersGuard';
 
-export default async function handler(req: any, res: any) {
+/**
+ * Serverless API handler for multimodal image inspection of masks, filters, and rooms.
+ */
+export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
+  applyCorsHeaders(req, res);
+
   if (req.method === 'OPTIONS') {
-    return sendJson(res, 200, { ok: true });
+    sendJson(res, 200, { ok: true });
+    return;
   }
 
   if (req.method !== 'POST') {
-    return sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
+    sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
+    return;
+  }
+
+  const clientIp = getClientIp(req);
+  const rateCheck = checkRateLimit(clientIp);
+  if (!rateCheck.allowed) {
+    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+    return;
   }
 
   try {
-    const rawBody = await parseRequestBody(req);
+    const rawBody = await parseRequestBody(req, MAX_VISION_PAYLOAD_BYTES);
     const parsedInput = VisionRequestSchema.safeParse(rawBody);
 
     if (!parsedInput.success) {
-      return sendJson(res, 400, {
+      sendJson(res, 400, {
         error: 'Invalid request body',
         details: parsedInput.error.format(),
       });
+      return;
     }
 
     const { imageBase64, mimeType, roomContext } = parsedInput.data;
@@ -67,17 +91,17 @@ Output ONLY structured JSON strictly conforming to this schema:
       "expectedPm25DropPct": number
     }
   ],
-    "crBoxRecommended": boolean,
-    "plantsRecommended": [
-      {
-        "name": string,
-        "targetPollutant": string,
-        "careLevel": "easy" | "moderate",
-        "airBenefit": string
-      }
-    ],
-    "summary": string
-  }`;
+  "crBoxRecommended": boolean,
+  "plantsRecommended": [
+    {
+      "name": string,
+      "targetPollutant": string,
+      "careLevel": "easy" | "moderate",
+      "airBenefit": string
+    }
+  ],
+  "summary": string
+}`;
 
     const prompt = `Inspect this image. Room context if specified: "${roomContext || 'indoor living room or kitchen'}".
 Detect all visible air quality hazards, infiltration points, and ventilation quality. Provide low-cost DIY engineering remedies.`;
@@ -112,7 +136,7 @@ Detect all visible air quality hazards, infiltration points, and ventilation qua
       commercialHepaCostInr: crSizing.commercialHepaCostInr,
     });
 
-    return sendJson(res, 200, {
+    sendJson(res, 200, {
       audit: {
         ...cascadeResult.data,
         crBoxSizing: crSizing,
@@ -124,10 +148,11 @@ Detect all visible air quality hazards, infiltration points, and ventilation qua
       latencyMs: cascadeResult.latencyMs,
       numbersGrounded: numbersGuardResult.isFullyGrounded,
     });
-  } catch (error: any) {
-    console.error('[API /api/vision-audit error]', error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[API /api/vision-audit error]', errorMsg);
     const fallback = fallbackVisionAudit();
-    return sendJson(res, 200, {
+    sendJson(res, 200, {
       audit: fallback,
       source: 'template_fallback',
       tier: 'tier4_fallback',

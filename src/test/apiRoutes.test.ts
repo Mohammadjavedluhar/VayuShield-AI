@@ -37,7 +37,13 @@ function createMockReqRes(body: any, method = 'POST') {
     getData: () => responseData,
   };
 
-  return { req, res };
+  return {
+    req: req as unknown as import('../../api/_lib/httpUtils').ExtendedRequest,
+    res: res as unknown as import('../../api/_lib/httpUtils').ExtendedResponse & {
+      getStatusCode: () => number;
+      getData: () => any;
+    },
+  };
 }
 
 describe('Vercel Serverless Functions (/api/*) with 4-Tier Resilience', () => {

@@ -5,7 +5,6 @@ import {
   Info,
   ShieldCheck,
   TrendingUp,
-  Wind,
 } from 'lucide-react';
 import { AirQualityData } from '../domain/types';
 import { getAqiColorTheme } from '../domain/airQuality';

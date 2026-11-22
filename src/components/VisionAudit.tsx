@@ -3,7 +3,6 @@ import {
   AlertCircle,
   Camera,
   CheckCircle2,
-  DollarSign,
   Droplets,
   Eye,
   Flower2,
@@ -409,8 +408,8 @@ export const VisionAudit: React.FC<VisionAuditProps> = ({
                 Zero-Cost Immediate Adjustments:
               </strong>
               <ul className="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300">
-                {auditResult.zeroCostActions.map((act, i) => (
-                  <li key={i}>{act}</li>
+                {auditResult.zeroCostActions.map((act) => (
+                  <li key={`action-${act.slice(0, 20)}`}>{act}</li>
                 ))}
               </ul>
             </div>
@@ -436,9 +435,9 @@ export const VisionAudit: React.FC<VisionAuditProps> = ({
                 <span>{t.hazardsFound}</span>
               </div>
 
-              {auditResult.hazardsIdentified.map((hazard, idx) => (
+              {auditResult.hazardsIdentified.map((hazard) => (
                 <div
-                  key={idx}
+                  key={`hazard-${hazard.hazard}-${hazard.severity}`}
                   className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800"
                 >
                   <div className="flex items-center justify-between">
@@ -472,9 +471,9 @@ export const VisionAudit: React.FC<VisionAuditProps> = ({
                 <span>{t.diyRemedies}</span>
               </div>
 
-              {auditResult.diyFixes.map((fix, idx) => (
+              {auditResult.diyFixes.map((fix) => (
                 <div
-                  key={idx}
+                  key={`fix-${fix.title}-${fix.costTier}`}
                   className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800"
                 >
                   <div className="flex items-center justify-between">
@@ -548,9 +547,9 @@ export const VisionAudit: React.FC<VisionAuditProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {auditResult.plantsRecommended.map((plant, idx) => (
+                {auditResult.plantsRecommended.map((plant) => (
                   <div
-                    key={idx}
+                    key={`plant-${plant.name}-${plant.targetPollutant}`}
                     className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-start gap-3"
                   >
                     <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">

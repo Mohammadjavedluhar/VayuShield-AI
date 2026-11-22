@@ -124,9 +124,9 @@ export const FamilyIntake: React.FC<FamilyIntakeProps> = ({
             {t.samplePromptsTitle}
           </span>
           <div className="flex flex-wrap gap-2">
-            {samplePrompts.map((sample, idx) => (
+            {samplePrompts.map((sample) => (
               <button
-                key={idx}
+                key={`sample-prompt-${sample.slice(0, 25)}`}
                 type="button"
                 onClick={() => handleSelectSample(sample)}
                 className="text-left text-xs px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition flex items-center gap-1.5"

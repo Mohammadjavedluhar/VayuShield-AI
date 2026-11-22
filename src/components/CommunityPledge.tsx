@@ -29,6 +29,7 @@ export const CommunityPledge: React.FC<CommunityPledgeProps> = ({
   const [pledgeName, setPledgeName] = useState('Verma Family');
   const [isSigned, setIsSigned] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [certificateId] = useState('VS-CERT-2025-VAYU');
 
   const handleSignPledge = () => {
     setIsSigned(true);
@@ -112,6 +113,7 @@ Join the Clean Air Movement & protect your family: https://vayushield-ai.vercel.
 
         <div className="sm:col-span-3 flex items-end">
           <button
+            type="button"
             onClick={handleSignPledge}
             className="w-full py-2.5 px-4 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30 hover:opacity-95 transition flex items-center justify-center gap-2"
           >
@@ -199,7 +201,7 @@ Join the Clean Air Movement & protect your family: https://vayushield-ai.vercel.
             Verified by <strong>VayuShield AI</strong> &bull; Berkeley Earth Muller Formula &bull; US EPA 2024 Standard
           </div>
           <div className="font-mono text-[11px] text-emerald-400">
-            ID: VS-{Date.now().toString(36).toUpperCase()}
+            ID: {certificateId}
           </div>
         </div>
       </div>
@@ -207,6 +209,7 @@ Join the Clean Air Movement & protect your family: https://vayushield-ai.vercel.
       {/* Share Actions */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button
+          type="button"
           onClick={handleWhatsApp}
           className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition"
         >
@@ -215,6 +218,7 @@ Join the Clean Air Movement & protect your family: https://vayushield-ai.vercel.
         </button>
 
         <button
+          type="button"
           onClick={handleCopy}
           className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700"
         >

@@ -1,17 +1,9 @@
 import React, { useState } from 'react';
 import {
-  AlertCircle,
-  AlertTriangle,
-  Baby,
-  Bus,
-  Car,
   Clock,
-  HeartPulse,
   Info,
   ShieldAlert,
-  ShieldCheck,
   Sun,
-  Users,
 } from 'lucide-react';
 import {
   analyzeMorningCommute,
@@ -19,22 +11,21 @@ import {
   MaskGrade,
   TravelMode,
 } from '../domain/commuteGuard';
-import { Language, translations } from '../i18n/translations';
+import { Language } from '../i18n/translations';
 
 interface CommuteGuardCardProps {
   outdoorPm25: number;
   city: string;
-  language: Language;
+  language?: Language;
 }
 
 export const CommuteGuardCard: React.FC<CommuteGuardCardProps> = ({
   outdoorPm25,
   city,
-  language,
 }) => {
   const [commuterType, setCommuterType] = useState<CommuterType>('child');
   const [departureTime, setDepartureTime] = useState<string>('07:15');
-  const [durationMinutes, setDurationMinutes] = useState<number>(35);
+  const durationMinutes = 35;
   const [travelMode, setTravelMode] = useState<TravelMode>('bus');
   const [currentMask, setCurrentMask] = useState<MaskGrade>('cloth');
 
@@ -77,7 +68,7 @@ export const CommuteGuardCard: React.FC<CommuteGuardCardProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/20 self-start sm:self-auto">
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-extrabold border self-start sm:self-auto ${getVerdictTheme(verdict.inversionRiskLevel)}`}>
           <Clock className="w-4 h-4" />
           <span>Inversion Risk: {verdict.inversionRiskLevel.toUpperCase()}</span>
         </div>

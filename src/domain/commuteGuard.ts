@@ -12,7 +12,7 @@
  */
 
 import { HourlyForecastItem } from './types';
-import { WHO_24H_PM25_THRESHOLD_UG_M3, INHALATION_VOLUMES } from './sources';
+import { WHO_24H_PM25_THRESHOLD_UG_M3 } from './sources';
 
 export type CommuterType = 'child' | 'elderly' | 'adult' | 'asthma_patient';
 export type TravelMode =

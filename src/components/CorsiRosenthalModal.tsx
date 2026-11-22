@@ -1,10 +1,5 @@
 import React, { useState } from 'react';
 import {
-  CheckCircle2,
-  DollarSign,
-  Info,
-  ShieldCheck,
-  Wind,
   Wrench,
   X,
 } from 'lucide-react';

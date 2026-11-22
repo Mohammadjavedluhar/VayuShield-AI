@@ -9,6 +9,10 @@ import { ImpactLedgerMetrics } from '../domain/types';
 
 describe('Strict Gemini Grounding & Numbers Guard - numbersGuard.ts', () => {
   it('extracts numbers accurately from complex text strings', () => {
+    const list = getCertifiedNumbersList({ pm25: 150, inhaledPm25ReductionPct: 75 });
+    expect(list).toContain(150);
+    expect(list).toContain(75);
+
     const text = 'At 185 ug/m3, wearing an N95 drops dose by 86.7% and saves 14.2 cigarettes per week.';
     const nums = extractNumbersFromText(text);
     // Standalone numbers are extracted; product codes like N95 are preserved as alphanumeric words
