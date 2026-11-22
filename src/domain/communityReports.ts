@@ -92,6 +92,67 @@ export const PRESEEDED_COMMUNITY_REPORTS: CommunityReport[] = [
 
 const LOCAL_STORAGE_KEY = 'vayushield_community_reports';
 
+const DISALLOWED_STORAGE_CHARS = /[^a-zA-Z0-9\s.,!?'"()#@/_-]/g;
+
+const VALID_INCIDENT_TYPES: readonly IncidentType[] = [
+  'waste_burning',
+  'crop_residue',
+  'construction_dust',
+  'traffic_gridlock',
+  'diesel_generator',
+];
+
+const VALID_SEVERITIES: readonly IncidentSeverity[] = ['critical', 'high', 'moderate'];
+
+const VALID_STATUSES = ['active', 'investigating', 'mitigated'] as const;
+
+/**
+ * Sanitizes an arbitrary string value against a strict character allowlist and length limit.
+ * Defends against Browser Storage Poisoning and XSS injection vectors.
+ */
+function sanitizeStorageString(val: unknown, maxLength: number, fallback = ''): string {
+  if (typeof val !== 'string') return fallback;
+  const stripped = val.replace(DISALLOWED_STORAGE_CHARS, '').trim();
+  const clamped = stripped.slice(0, maxLength);
+  return clamped || fallback;
+}
+
+/**
+ * Validates and sanitizes a single report object before storing into or loading from localStorage.
+ */
+export function sanitizeReportItem(raw: unknown): CommunityReport {
+  const r = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? (raw as Record<string, unknown>) : {};
+
+  const id = String(r.id || '').replace(/[^\w-]/g, '').slice(0, 64);
+  const rawIncidentType = String(r.incidentType || '');
+  const incidentType: IncidentType = VALID_INCIDENT_TYPES.includes(rawIncidentType as IncidentType)
+    ? (rawIncidentType as IncidentType)
+    : 'waste_burning';
+
+  const rawSeverity = String(r.severity || '');
+  const severity: IncidentSeverity = VALID_SEVERITIES.includes(rawSeverity as IncidentSeverity)
+    ? (rawSeverity as IncidentSeverity)
+    : 'moderate';
+
+  const rawStatus = String(r.status || '');
+  const status = VALID_STATUSES.includes(rawStatus as 'active' | 'investigating' | 'mitigated')
+    ? (rawStatus as 'active' | 'investigating' | 'mitigated')
+    : 'active';
+
+  return {
+    id,
+    neighborhood: sanitizeStorageString(r.neighborhood, 100),
+    city: sanitizeStorageString(r.city, 100),
+    incidentType,
+    severity,
+    description: sanitizeStorageString(r.description, 500),
+    reportedAt: sanitizeStorageString(r.reportedAt, 50, 'Just now'),
+    upvotes: typeof r.upvotes === 'number' && Number.isFinite(r.upvotes) ? Math.max(0, Math.floor(r.upvotes)) : 0,
+    status,
+    reporterName: sanitizeStorageString(r.reporterName, 100, 'Neighbor'),
+  };
+}
+
 export function getStoredReports(): CommunityReport[] {
   if (typeof window === 'undefined' || !window.localStorage) return PRESEEDED_COMMUNITY_REPORTS;
   try {
@@ -100,7 +161,10 @@ export function getStoredReports(): CommunityReport[] {
       window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(PRESEEDED_COMMUNITY_REPORTS));
       return PRESEEDED_COMMUNITY_REPORTS;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return PRESEEDED_COMMUNITY_REPORTS;
+    const sanitized = parsed.map((item) => sanitizeReportItem(item));
+    return sanitized.length > 0 ? sanitized : PRESEEDED_COMMUNITY_REPORTS;
   } catch {
     return PRESEEDED_COMMUNITY_REPORTS;
   }
@@ -110,18 +174,7 @@ export function saveStoredReports(reports: CommunityReport[]): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     if (!Array.isArray(reports)) return;
-    const sanitized: CommunityReport[] = reports.slice(0, 50).map((r) => ({
-      id: String(r.id || '').replace(/[^\w-]/g, ''),
-      neighborhood: String(r.neighborhood || '').slice(0, 100),
-      city: String(r.city || '').slice(0, 100),
-      incidentType: r.incidentType,
-      severity: r.severity,
-      description: String(r.description || '').slice(0, 500),
-      reportedAt: String(r.reportedAt || 'Just now').slice(0, 50),
-      upvotes: typeof r.upvotes === 'number' ? Math.max(0, r.upvotes) : 0,
-      status: r.status === 'investigating' || r.status === 'mitigated' ? r.status : 'active',
-      reporterName: String(r.reporterName || 'Neighbor').slice(0, 100),
-    }));
+    const sanitized: CommunityReport[] = reports.slice(0, 50).map((r) => sanitizeReportItem(r));
     window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sanitized));
   } catch (err) {
     console.error('Failed to save community reports:', err);
