@@ -6,6 +6,7 @@ import {
   enforceGroundedMetrics,
 } from '../domain/numbersGuard';
 import { ImpactLedgerMetrics } from '../domain/types';
+import { createMockImpactLedger } from '../../tests/testHelpers';
 
 describe('Strict Gemini Grounding & Numbers Guard - numbersGuard.ts', () => {
   it('extracts numbers accurately from complex text strings', () => {
@@ -66,7 +67,7 @@ describe('Strict Gemini Grounding & Numbers Guard - numbersGuard.ts', () => {
   });
 
   it('enforces ground truth metrics onto candidate object', () => {
-    const groundTruth: ImpactLedgerMetrics = {
+    const groundTruth = createMockImpactLedger({
       baselineInhaledPm25DoseUgPerDay: 1062,
       protectedInhaledPm25DoseUgPerDay: 141.3,
       inhaledPm25ReductionPct: 86.7,
@@ -76,7 +77,7 @@ describe('Strict Gemini Grounding & Numbers Guard - numbersGuard.ts', () => {
       co2SavedKgPerWeek: 13.5,
       cleanAirHoursGainedPerDay: 21,
       riskReductionScore: 85,
-    };
+    });
 
     const fakeCandidate: Partial<ImpactLedgerMetrics> = {
       inhaledPm25ReductionPct: 99.9, // hallucinated

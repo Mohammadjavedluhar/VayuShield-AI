@@ -3,7 +3,12 @@ import intakeHandler from '../../api/intake';
 import visionHandler from '../../api/vision-audit';
 import planHandler from '../../api/plan';
 import askHandler from '../../api/ask';
-import { createMockReqRes } from '../../tests/testHelpers';
+import {
+  createMockReqRes,
+  createTestProfile,
+  createTestInterventions,
+  createMockAirQualityData,
+} from '../../tests/testHelpers';
 
 describe('Vercel Serverless Functions (/api/*) with 4-Tier Resilience', () => {
   it('/api/intake extracts family profile and vulnerability score', async () => {
@@ -44,39 +49,20 @@ describe('Vercel Serverless Functions (/api/*) with 4-Tier Resilience', () => {
   });
 
   it('/api/plan produces clean-hour routine and grounded clinical action plan', async () => {
-    const profile = {
-      householdSize: 4,
-      city: 'Delhi',
+    const profile = createTestProfile({
       hasAsthma: true,
-      hasCopdOrCardiac: false,
       hasChildren: true,
       hasElderly: true,
-      isPregnant: false,
-      commuteMode: 'car' as const,
-      commuteDistanceKm: 12,
-      cookingFuel: 'lpg' as const,
-      heatingSource: 'none' as const,
-      hasAirPurifier: false,
-      wearsMaskOutdoors: false,
       vulnerabilityScore: 85,
-      vulnerabilityLevel: 'critical' as const,
-    };
+      vulnerabilityLevel: 'critical',
+    });
 
-    const airQuality = {
-      city: 'Delhi',
+    const airQuality = createMockAirQualityData({
       currentAqi: 340,
       pm25: 210,
-      hourlyForecast: [],
-    };
+    });
 
-    const interventions = {
-      useN95Mask: true,
-      useAirPurifier: true,
-      commuteMode: 'metro' as const,
-      cookingFuel: 'induction' as const,
-      roomSealImprovement: true,
-      wetMoppingDaily: true,
-    };
+    const interventions = createTestInterventions();
 
     const { req, res } = createMockReqRes({ profile, airQuality, interventions });
     await planHandler(req, res);

@@ -39,7 +39,7 @@ import {
   getDefaultActionChecklist,
 } from '../src/domain/cleanHours';
 import type { HouseholdProfile } from '../src/domain/types';
-import { createTestProfile } from './testHelpers';
+import { createTestProfile, createMockImpactLedger } from './testHelpers';
 
 describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
   describe('airQuality.ts edge cases', () => {
@@ -758,17 +758,10 @@ describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
     });
 
     it('covers getDefaultActionChecklist', () => {
-      const mockLedger = {
-        baselineInhaledPm25DoseUgPerDay: 100,
-        protectedInhaledPm25DoseUgPerDay: 30,
+      const mockLedger = createMockImpactLedger({
         inhaledPm25ReductionPct: 70,
-        baselineCigarettesPerDay: 8,
-        avoidedCigarettesPerDay: 6,
         avoidedCigarettesPerWeek: 42,
-        co2SavedKgPerWeek: 15,
-        cleanAirHoursGainedPerDay: 12,
-        riskReductionScore: 75,
-      };
+      });
       const items = getDefaultActionChecklist(mockLedger);
       expect(items.length).toBe(4);
       expect(items[1].rationale).toContain('70%');

@@ -4,7 +4,7 @@
  */
 
 import type { ExtendedRequest, ExtendedResponse } from '../api/_lib/httpUtils';
-import type { HouseholdProfile, Interventions } from '../src/domain/types';
+import type { AirQualityData, HouseholdProfile, ImpactLedgerMetrics, Interventions } from '../src/domain/types';
 
 export interface MockReqResResult {
   req: ExtendedRequest;
@@ -110,6 +110,46 @@ export function createTestInterventions(overrides: Partial<Interventions> = {}):
     cookingFuel: 'induction',
     roomSealImprovement: true,
     wetMoppingDaily: true,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates standardized mock air quality data with optional property overrides.
+ */
+export function createMockAirQualityData(overrides: Partial<AirQualityData> = {}): AirQualityData {
+  return {
+    city: 'Delhi',
+    latitude: 28.6139,
+    longitude: 77.209,
+    timestamp: '2026-11-22T08:00:00.000Z',
+    currentAqi: 350,
+    pm25: 220,
+    pm10: 380,
+    no2: 85,
+    category: 'hazardous',
+    categoryLabel: 'Hazardous',
+    dominantPollutant: 'PM2.5',
+    healthAdvisory: 'Health alert: serious risk of respiratory damage for all individuals.',
+    hourlyForecast: [],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates standardized mock impact ledger metrics with optional property overrides.
+ */
+export function createMockImpactLedger(overrides: Partial<ImpactLedgerMetrics> = {}): ImpactLedgerMetrics {
+  return {
+    baselineInhaledPm25DoseUgPerDay: 1450.5,
+    protectedInhaledPm25DoseUgPerDay: 210.2,
+    inhaledPm25ReductionPct: 85.5,
+    baselineCigarettesPerDay: 14.5,
+    avoidedCigarettesPerDay: 12.4,
+    avoidedCigarettesPerWeek: 86.8,
+    co2SavedKgPerWeek: 21.5,
+    cleanAirHoursGainedPerDay: 14.0,
+    riskReductionScore: 88,
     ...overrides,
   };
 }
