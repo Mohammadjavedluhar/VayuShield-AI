@@ -402,8 +402,8 @@ describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
         outdoorPm25: 250,
         windowSeal: 'leaky_drafty',
         cookingFuel: 'biomass_chulha',
-        incenseUsage: 'multiple_daily',
-        ventilationRate: 'high_open',
+        incenseUsage: 'multiple_dhoop',
+        ventilationRate: 'high_draft',
         airPurifier: 'none',
         roomAreaSqFt: 180,
       });
@@ -418,9 +418,9 @@ describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
       const openWin = estimateIndoorAirQuality({
         outdoorPm25: 120,
         windowSeal: 'open_windows',
-        cookingFuel: 'induction_clean',
+        cookingFuel: 'induction',
         incenseUsage: 'none',
-        ventilationRate: 'low_closed',
+        ventilationRate: 'low_sealed',
         airPurifier: 'hepa_h13',
         roomAreaSqFt: 250,
       });
@@ -683,7 +683,7 @@ describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
           id: '',
           neighborhood: '',
           city: '',
-          incidentType: 'industrial_emission',
+          incidentType: 'waste_burning',
           severity: 'moderate',
           description: '',
           reportedAt: '12m ago',
