@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "check": "tsc -b && vitest run",
     "lint": "oxlint",
+    "typecheck": "tsc -b",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
