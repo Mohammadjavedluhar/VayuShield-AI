@@ -147,7 +147,7 @@ export async function callPlanApi(
 
 export async function callAskApi(
   question: string,
-  context: { city?: string; aqi?: number; pm25?: number; profile?: any; ledger?: ImpactLedgerMetrics }
+  context: { city?: string; aqi?: number; pm25?: number; profile?: HouseholdProfile; ledger?: ImpactLedgerMetrics }
 ): Promise<{
   answer: string;
   recommendations: string[];

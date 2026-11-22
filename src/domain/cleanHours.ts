@@ -6,6 +6,25 @@
 import { CleanHourWindow, HourlyForecastItem, ImpactLedgerMetrics, ActionItem } from './types';
 
 /**
+ * Maps an AQI value to its diurnal category without nested ternary branching.
+ */
+function mapHourlyAqiCategory(aqi: number): 'hazardous' | 'veryUnhealthy' | 'unhealthy' | 'moderate' {
+  if (aqi > 300) return 'hazardous';
+  if (aqi > 200) return 'veryUnhealthy';
+  if (aqi > 150) return 'unhealthy';
+  return 'moderate';
+}
+
+/**
+ * Determines outdoor exercise safety status for a given AQI.
+ */
+function getExerciseWindowStatus(aqi: number): 'safe' | 'caution' | 'danger' {
+  if (aqi <= 150) return 'safe';
+  if (aqi <= 250) return 'caution';
+  return 'danger';
+}
+
+/**
  * Generates default 24-hour diurnal profile based on winter temperature inversion curve.
  */
 export function generateDefaultHourly(basePm25: number): HourlyForecastItem[] {
@@ -22,7 +41,7 @@ export function generateDefaultHourly(basePm25: number): HourlyForecastItem[] {
       pm10: Math.round(pm * 1.6),
       no2: Math.round(40 + pm * 0.2),
       aqi,
-      aqiCategory: aqi > 300 ? 'hazardous' : aqi > 200 ? 'veryUnhealthy' : aqi > 150 ? 'unhealthy' : 'moderate',
+      aqiCategory: mapHourlyAqiCategory(aqi),
       isExerciseSafe: i >= 12 && i <= 15 && aqi < 200,
       isCommuteWarning: (i >= 7 && i <= 10) || (i >= 19 && i <= 22),
       isVentilationSafe: i === 14 && aqi < 150,
@@ -65,7 +84,7 @@ export function computeCleanHourWindows(hourly: CleanHourInputItem[], currentPm2
       startHour: Math.max(11, bestExerciseHour.hour - 1),
       endHour: Math.min(16, bestExerciseHour.hour + 2),
       avgAqi: bestExerciseHour.aqi,
-      status: bestExerciseHour.aqi <= 150 ? 'safe' : bestExerciseHour.aqi <= 250 ? 'caution' : 'danger',
+      status: getExerciseWindowStatus(bestExerciseHour.aqi),
       advice:
         bestExerciseHour.aqi <= 150
           ? 'Thermal inversion is lifted by solar warmth. Safest window for brisk walking or errands.'

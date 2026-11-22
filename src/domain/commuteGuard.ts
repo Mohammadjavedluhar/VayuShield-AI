@@ -121,6 +121,44 @@ export function getInversionFactor(timeStr: string): { factor: number; riskLevel
   return { factor: 0.75, riskLevel: 'low' };
 }
 
+function determineMaskVerdict(effectiveAmbientPm25: number): {
+  maskVerdict: string;
+  maskRecommendation: string;
+} {
+  if (effectiveAmbientPm25 <= 50) {
+    return {
+      maskVerdict: 'Low Risk / Optional',
+      maskRecommendation: 'Air is within acceptable ranges. Sensitive individuals may wear a mask.',
+    };
+  }
+  if (effectiveAmbientPm25 <= 100) {
+    return {
+      maskVerdict: 'Surgical / KN95 Advisory',
+      maskRecommendation: 'Sensitive individuals should wear certified KN95 or surgical mask.',
+    };
+  }
+  if (effectiveAmbientPm25 <= 200) {
+    return {
+      maskVerdict: 'KN95 / N95 Recommended',
+      maskRecommendation: 'KN95 or N95 strongly advised. Avoid cloth masks.',
+    };
+  }
+  return {
+    maskVerdict: 'N95 Mandatory',
+    maskRecommendation: 'Extreme particulate hazard. Headband-style N95 mandatory with 0% gap leakage.',
+  };
+}
+
+function computeSuggestedDeparture(departureTime: string, delayMinutes: number = 45): string {
+  const parts = departureTime.split(':');
+  const currentH = Number.parseInt(parts[0], 10) || 7;
+  const currentM = Number.parseInt(parts[1], 10) || 0;
+  const delayedTotalMinutes = currentH * 60 + currentM + delayMinutes;
+  const delayedH = Math.floor(delayedTotalMinutes / 60);
+  const delayedM = delayedTotalMinutes % 60;
+  return `${delayedH.toString().padStart(2, '0')}:${delayedM.toString().padStart(2, '0')}`;
+}
+
 /**
  * School & Elderly Commute Guard Analyzer
  */
@@ -147,13 +185,7 @@ export function analyzeMorningCommute(params: MorningCommuteParams): MorningComm
   const whoSafeLimitMultiplier = Number((inhaledDoseUg / whoCommuteSafeBudgetUg).toFixed(1));
 
   // 4. Departure Delay Optimization (e.g., delaying by 45 minutes)
-  const parts = params.departureTime.split(':');
-  const currentH = Number.parseInt(parts[0], 10) || 7;
-  const currentM = Number.parseInt(parts[1], 10) || 0;
-  const delayedTotalMinutes = currentH * 60 + currentM + 45;
-  const delayedH = Math.floor(delayedTotalMinutes / 60);
-  const delayedM = delayedTotalMinutes % 60;
-  const suggestedDepartureTime = `${delayedH.toString().padStart(2, '0')}:${delayedM.toString().padStart(2, '0')}`;
+  const suggestedDepartureTime = computeSuggestedDeparture(params.departureTime, 45);
 
   const { factor: delayedInversionFactor } = getInversionFactor(suggestedDepartureTime);
   const delayedAmbientPm25 = Math.round(outdoorPm25 * delayedInversionFactor);
@@ -165,22 +197,7 @@ export function analyzeMorningCommute(params: MorningCommuteParams): MorningComm
       : 0;
 
   // 5. Mask Grade Verdict
-  let maskVerdict = 'N95 Mandatory';
-  let maskRecommendation = 'Certified N95 / FFP2 respirator with tight nose seal required.';
-
-  if (effectiveAmbientPm25 <= 50) {
-    maskVerdict = 'Low Risk / Optional';
-    maskRecommendation = 'Air is within acceptable ranges. Sensitive individuals may wear a mask.';
-  } else if (effectiveAmbientPm25 <= 100) {
-    maskVerdict = 'Surgical / KN95 Advisory';
-    maskRecommendation = 'Sensitive individuals should wear certified KN95 or surgical mask.';
-  } else if (effectiveAmbientPm25 <= 200) {
-    maskVerdict = 'KN95 / N95 Recommended';
-    maskRecommendation = 'KN95 or N95 strongly advised. Avoid cloth masks.';
-  } else {
-    maskVerdict = 'N95 Mandatory';
-    maskRecommendation = 'Extreme particulate hazard. Headband-style N95 mandatory with 0% gap leakage.';
-  }
+  const { maskVerdict, maskRecommendation } = determineMaskVerdict(effectiveAmbientPm25);
 
   // 6. Advice Strings
   const departureShiftAdvice =

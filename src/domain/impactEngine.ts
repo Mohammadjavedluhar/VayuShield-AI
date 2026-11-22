@@ -246,15 +246,8 @@ export function calculateCorsiRosenthalSizing(
   };
 }
 
-/**
- * 6. Deterministic Household Vulnerability Score (0 - 100)
- */
-export function calculateHouseholdVulnerability(profile: Partial<HouseholdProfile>): {
-  score: number;
-  level: 'low' | 'moderate' | 'high' | 'critical';
-  riskFactors: string[];
-} {
-  let score = 10; // Baseline urban winter smog exposure
+function evaluateMedicalRisk(profile: Partial<HouseholdProfile>): { score: number; riskFactors: string[] } {
+  let score = 0;
   const riskFactors: string[] = [];
 
   if (profile.hasAsthma) {
@@ -278,7 +271,13 @@ export function calculateHouseholdVulnerability(profile: Partial<HouseholdProfil
     riskFactors.push('Young children (Higher respiratory rate per kg body mass)');
   }
 
-  // Commute exposure
+  return { score, riskFactors };
+}
+
+function evaluateExposureRisk(profile: Partial<HouseholdProfile>): { score: number; riskFactors: string[] } {
+  let score = 0;
+  const riskFactors: string[] = [];
+
   if (profile.commuteMode === 'twoWheeler') {
     score += 15;
     riskFactors.push('Open two-wheeler commute during morning inversions');
@@ -287,7 +286,6 @@ export function calculateHouseholdVulnerability(profile: Partial<HouseholdProfil
     riskFactors.push('Active breathing during severe outdoor smog');
   }
 
-  // Cooking source
   if (profile.cookingFuel === 'biomassChulha') {
     score += 25;
     riskFactors.push('Indoor solid biomass combustion');
@@ -295,6 +293,31 @@ export function calculateHouseholdVulnerability(profile: Partial<HouseholdProfil
     score += 15;
     riskFactors.push('Unvented combustion heating indoors');
   }
+
+  return { score, riskFactors };
+}
+
+function mapVulnerabilityScoreToLevel(score: number): 'low' | 'moderate' | 'high' | 'critical' {
+  if (score >= 75) return 'critical';
+  if (score >= 50) return 'high';
+  if (score >= 25) return 'moderate';
+  return 'low';
+}
+
+/**
+ * 6. Deterministic Household Vulnerability Score (0 - 100)
+ */
+export function calculateHouseholdVulnerability(profile: Partial<HouseholdProfile>): {
+  score: number;
+  level: 'low' | 'moderate' | 'high' | 'critical';
+  riskFactors: string[];
+} {
+  let score = 10; // Baseline urban winter smog exposure
+  const med = evaluateMedicalRisk(profile);
+  const exp = evaluateExposureRisk(profile);
+
+  score += med.score + exp.score;
+  const riskFactors = [...med.riskFactors, ...exp.riskFactors];
 
   // Mitigations
   if (profile.hasAirPurifier) {
@@ -306,14 +329,9 @@ export function calculateHouseholdVulnerability(profile: Partial<HouseholdProfil
 
   const boundedScore = Math.min(100, Math.max(0, score));
 
-  let level: 'low' | 'moderate' | 'high' | 'critical' = 'low';
-  if (boundedScore >= 75) level = 'critical';
-  else if (boundedScore >= 50) level = 'high';
-  else if (boundedScore >= 25) level = 'moderate';
-
   return {
     score: boundedScore,
-    level,
+    level: mapVulnerabilityScoreToLevel(boundedScore),
     riskFactors,
   };
 }

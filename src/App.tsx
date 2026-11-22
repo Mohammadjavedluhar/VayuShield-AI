@@ -21,6 +21,7 @@ import { CommunityWatch } from './components/CommunityWatch';
 import { WhatIfSimulator } from './components/WhatIfSimulator';
 import {
   AirQualityData,
+  AqiCategory,
   HouseholdProfile,
   Interventions,
   VisionAuditResult,
@@ -36,6 +37,14 @@ import {
   callIntakeApi,
   callVisionAuditApi,
 } from './services/apiClient';
+
+function getAqiCategoryMeta(aqi: number): { category: AqiCategory; categoryLabel: string } {
+  if (aqi > 300) return { category: 'hazardous', categoryLabel: 'Hazardous' };
+  if (aqi > 200) return { category: 'veryUnhealthy', categoryLabel: 'Very Unhealthy' };
+  if (aqi > 150) return { category: 'unhealthy', categoryLabel: 'Unhealthy' };
+  if (aqi > 100) return { category: 'unhealthySensitive', categoryLabel: 'Unhealthy for Sensitive Groups' };
+  return { category: 'moderate', categoryLabel: 'Moderate' };
+}
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('en');
@@ -186,8 +195,7 @@ export default function App() {
       no2: Math.round(preset.pm25 * 0.35),
       temperature: prev?.temperature ?? 18,
       humidity: prev?.humidity ?? 65,
-      category: preset.aqi > 300 ? 'hazardous' : preset.aqi > 200 ? 'veryUnhealthy' : preset.aqi > 150 ? 'unhealthy' : preset.aqi > 100 ? 'unhealthySensitive' : 'moderate',
-      categoryLabel: preset.aqi > 300 ? 'Hazardous' : preset.aqi > 200 ? 'Very Unhealthy' : preset.aqi > 150 ? 'Unhealthy' : 'Moderate',
+      ...getAqiCategoryMeta(preset.aqi),
       dominantPollutant: 'PM2.5',
       healthAdvisory: preset.description,
       hourlyForecast: prev?.hourlyForecast && prev.hourlyForecast.length > 0 ? prev.hourlyForecast : [

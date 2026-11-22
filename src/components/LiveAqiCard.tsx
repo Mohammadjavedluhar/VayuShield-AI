@@ -17,6 +17,12 @@ interface LiveAqiCardProps {
   onSelectHour?: (hour: number) => void;
 }
 
+const getHourSafetyLabel = (isExerciseSafe: boolean, isCommuteWarning: boolean): string => {
+  if (isExerciseSafe) return '🏃 Clean';
+  if (isCommuteWarning) return '⚠️ Smog';
+  return 'Indoor';
+};
+
 export const LiveAqiCard: React.FC<LiveAqiCardProps> = ({ data, language }) => {
   const t = translations[language];
   const theme = getAqiColorTheme(data.category);
@@ -233,7 +239,7 @@ export const LiveAqiCard: React.FC<LiveAqiCardProps> = ({ data, language }) => {
                   className={`w-2 h-2 rounded-full ${hTheme.progressColor}`}
                 />
                 <span className="text-[9px] text-slate-400 mt-1">
-                  {hour.isExerciseSafe ? '🏃 Clean' : hour.isCommuteWarning ? '⚠️ Smog' : 'Indoor'}
+                  {getHourSafetyLabel(hour.isExerciseSafe, hour.isCommuteWarning)}
                 </span>
               </div>
             );

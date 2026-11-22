@@ -87,6 +87,37 @@ export function getCertifiedNumbersList(metrics: CertifiedMetricsContext | Impac
   return list;
 }
 
+function sanitizeSentenceNumbers(
+  sentence: string,
+  certifiedList: number[],
+  verifiedSet: Set<number>,
+  unverifiedSet: Set<number>
+): { sanitizedSentence: string; hasUngrounded: boolean } {
+  const numbersInSentence = extractNumbersFromText(sentence);
+  let hasUngrounded = false;
+  let sanitizedSentence = sentence;
+
+  for (const num of numbersInSentence) {
+    if (SAFE_CALENDAR_NUMERALS.has(Math.abs(num))) {
+      verifiedSet.add(num);
+      continue;
+    }
+
+    if (isNumberMatch(num, certifiedList)) {
+      verifiedSet.add(num);
+    } else {
+      unverifiedSet.add(num);
+      hasUngrounded = true;
+
+      const escapedNum = num.toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedNum}(?:\\s*(?:%|kg|cigarettes?|ug/m³|µg/m³))?\\b`, 'gi');
+      sanitizedSentence = sanitizedSentence.replace(regex, '[verified engine figure]');
+    }
+  }
+
+  return { sanitizedSentence, hasUngrounded };
+}
+
 /**
  * Verifies if all numbers in an AI response sentence are grounded in impactEngine metrics.
  * If an ungrounded statistic is found, sanitizes or redacts the fabricated number.
@@ -112,38 +143,13 @@ export function verifyAndSanitizeText(
   const cleanedSentences: string[] = [];
 
   for (const sentence of sentences) {
-    const numbersInSentence = extractNumbersFromText(sentence);
-    let sentenceHasUngrounded = false;
-    let sanitizedSentence = sentence;
-
-    for (const num of numbersInSentence) {
-      // Check if it's an allowed standard calendar/time numeral or physical rating
-      if (SAFE_CALENDAR_NUMERALS.has(Math.abs(num))) {
-        verifiedSet.add(num);
-        continue;
-      }
-
-      // Check if it matches any certified impactEngine metric
-      if (isNumberMatch(num, certifiedList)) {
-        verifiedSet.add(num);
-      } else {
-        // Detected an ungrounded / hallucinated number
-        unverifiedSet.add(num);
-        sentenceHasUngrounded = true;
-
-        // Redact unverified quantitative claims
-        // e.g. replace "saves 45 kg of CO2" with "saves verified emissions"
-        const escapedNum = num.toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`\\b${escapedNum}(?:\\s*(?:%|kg|cigarettes?|ug/m³|µg/m³))?\\b`, 'gi');
-        sanitizedSentence = sanitizedSentence.replace(regex, '[verified engine figure]');
-      }
-    }
-
-    if (sentenceHasUngrounded) {
-      cleanedSentences.push(sanitizedSentence);
-    } else {
-      cleanedSentences.push(sentence);
-    }
+    const { sanitizedSentence, hasUngrounded } = sanitizeSentenceNumbers(
+      sentence,
+      certifiedList,
+      verifiedSet,
+      unverifiedSet
+    );
+    cleanedSentences.push(hasUngrounded ? sanitizedSentence : sentence);
   }
 
   const unverifiedNumbers = Array.from(unverifiedSet);

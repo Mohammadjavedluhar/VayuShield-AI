@@ -102,6 +102,16 @@ export async function fetchAirQualityData(
   }
 }
 
+function calculateHourlySolarFactor(hour: number): number {
+  if (hour >= 12 && hour <= 16) {
+    return 0.65;
+  }
+  if ((hour >= 6 && hour <= 9) || (hour >= 20 && hour <= 23)) {
+    return 1.25;
+  }
+  return 1.0;
+}
+
 /**
  * High-fidelity fallback model when Open-Meteo rate limits or offline
  */
@@ -122,7 +132,7 @@ export function getSyntheticCityAirQuality(
   for (let offset = 0; offset < 24; offset++) {
     const hour = (currentHour + offset) % 24;
     // Diurnal inversion curve: higher at 7-9am and 8-11pm, lowest at 1-3pm
-    const solarFactor = hour >= 12 && hour <= 16 ? 0.65 : (hour >= 6 && hour <= 9) || (hour >= 20 && hour <= 23) ? 1.25 : 1.0;
+    const solarFactor = calculateHourlySolarFactor(hour);
     const pm = Math.round(basePm25 * solarFactor);
     const p10 = Math.round(basePm10 * solarFactor);
     const no2 = Math.round(baseNo2 * solarFactor);

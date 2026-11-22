@@ -11,50 +11,46 @@ import {
 } from './types';
 import { z } from 'zod';
 
-export function fallbackIntake(text: string, cityHint?: string): z.infer<typeof IntakeResponseSchema> {
-  const lower = text.toLowerCase();
-
-  // Family size extraction
-  let householdSize = 4;
+function parseHouseholdSize(lower: string): number {
   const sizeMatch = /(?:family|household|living with)[^\d]{0,20}(\d{1,2})/i.exec(lower) || /(\d{1,2})[^\d]{0,15}(?:people|members|adults|kids|family)/i.exec(lower);
   if (sizeMatch?.[1]) {
-    householdSize = Math.max(1, Math.min(15, Number.parseInt(sizeMatch[1], 10)));
+    return Math.max(1, Math.min(15, Number.parseInt(sizeMatch[1], 10)));
   }
+  return 4;
+}
 
-  // City detection
-  let city = cityHint || 'Delhi';
+function detectCityFromText(lower: string, cityHint?: string): string {
   const cities = ['delhi', 'noida', 'gurugram', 'gurgaon', 'ghaziabad', 'faridabad', 'mumbai', 'lahore', 'kolkata', 'patna', 'lucknow', 'chandigarh', 'beijing', 'london', 'salt lake city'];
   for (const c of cities) {
     if (lower.includes(c)) {
-      city = c.charAt(0).toUpperCase() + c.slice(1);
-      break;
+      return c.charAt(0).toUpperCase() + c.slice(1);
     }
   }
+  return cityHint || 'Delhi';
+}
 
-  // Medical conditions
-  const hasAsthma = lower.includes('asthma') || lower.includes('inhaler') || lower.includes('wheezing');
-  const hasCopdOrCardiac = lower.includes('copd') || lower.includes('heart') || lower.includes('cardiac') || lower.includes('bronchitis');
-  const hasChildren = lower.includes('kid') || lower.includes('child') || lower.includes('baby') || lower.includes('infant') || lower.includes('toddler') || lower.includes('school');
-  const hasElderly = lower.includes('elderly') || lower.includes('senior') || lower.includes('grandparent') || lower.includes('grandfather') || lower.includes('grandmother') || lower.includes('parents');
-  const isPregnant = lower.includes('pregnant') || lower.includes('pregnancy');
+function detectCommuteModeFromText(lower: string): 'car' | 'carpool' | 'twoWheeler' | 'metro' | 'bus' | 'walkOrCycle' | 'ev' {
+  if (lower.includes('metro') || lower.includes('subway') || lower.includes('train')) return 'metro';
+  if (lower.includes('two wheeler') || lower.includes('scooter') || lower.includes('bike') || lower.includes('motorcycle')) return 'twoWheeler';
+  if (lower.includes('bus')) return 'bus';
+  if (lower.includes('cycle') || lower.includes('walk') || lower.includes('pedestrian')) return 'walkOrCycle';
+  if (lower.includes('carpool') || lower.includes('ride share')) return 'carpool';
+  if (lower.includes('ev') || lower.includes('electric vehicle')) return 'ev';
+  return 'car';
+}
 
-  // Commute mode
-  let commuteMode: 'car' | 'carpool' | 'twoWheeler' | 'metro' | 'bus' | 'walkOrCycle' | 'ev' = 'car';
-  if (lower.includes('metro') || lower.includes('subway') || lower.includes('train')) commuteMode = 'metro';
-  else if (lower.includes('two wheeler') || lower.includes('scooter') || lower.includes('bike') || lower.includes('motorcycle')) commuteMode = 'twoWheeler';
-  else if (lower.includes('bus')) commuteMode = 'bus';
-  else if (lower.includes('cycle') || lower.includes('walk') || lower.includes('pedestrian')) commuteMode = 'walkOrCycle';
-  else if (lower.includes('carpool') || lower.includes('ride share')) commuteMode = 'carpool';
-  else if (lower.includes('ev') || lower.includes('electric vehicle')) commuteMode = 'ev';
-
-  // Commute distance
-  let commuteDistanceKm = 12;
+function extractCommuteDistanceKm(lower: string): number {
   const distMatch = /(\d{1,3})[^\d]{0,10}(?:km|kms|kilometers|miles)/i.exec(lower);
   if (distMatch?.[1]) {
-    commuteDistanceKm = Math.min(100, Math.max(1, Number.parseInt(distMatch[1], 10)));
+    return Math.min(100, Math.max(1, Number.parseInt(distMatch[1], 10)));
   }
+  return 12;
+}
 
-  // Cooking & Heating
+function detectCookingAndHeating(lower: string): {
+  cookingFuel: 'lpg' | 'biomassChulha' | 'induction' | 'pipedGas';
+  heatingSource: 'unventedHeater' | 'electricHeater' | 'firewood' | 'none';
+} {
   let cookingFuel: 'lpg' | 'biomassChulha' | 'induction' | 'pipedGas' = 'lpg';
   if (lower.includes('chulha') || lower.includes('wood') || lower.includes('dung') || lower.includes('biomass')) cookingFuel = 'biomassChulha';
   else if (lower.includes('induction') || lower.includes('electric stove')) cookingFuel = 'induction';
@@ -64,6 +60,26 @@ export function fallbackIntake(text: string, cityHint?: string): z.infer<typeof 
   if (lower.includes('unvented') || lower.includes('gas heater') || lower.includes('blower')) heatingSource = 'unventedHeater';
   else if (lower.includes('electric heater') || lower.includes('oil heater') || lower.includes('radiator')) heatingSource = 'electricHeater';
   else if (lower.includes('firewood') || lower.includes('angithi')) heatingSource = 'firewood';
+
+  return { cookingFuel, heatingSource };
+}
+
+export function fallbackIntake(text: string, cityHint?: string): z.infer<typeof IntakeResponseSchema> {
+  const lower = text.toLowerCase();
+
+  const householdSize = parseHouseholdSize(lower);
+  const city = detectCityFromText(lower, cityHint);
+
+  // Medical conditions
+  const hasAsthma = lower.includes('asthma') || lower.includes('inhaler') || lower.includes('wheezing');
+  const hasCopdOrCardiac = lower.includes('copd') || lower.includes('heart') || lower.includes('cardiac') || lower.includes('bronchitis');
+  const hasChildren = lower.includes('kid') || lower.includes('child') || lower.includes('baby') || lower.includes('infant') || lower.includes('toddler') || lower.includes('school');
+  const hasElderly = lower.includes('elderly') || lower.includes('senior') || lower.includes('grandparent') || lower.includes('grandfather') || lower.includes('grandmother') || lower.includes('parents');
+  const isPregnant = lower.includes('pregnant') || lower.includes('pregnancy');
+
+  const commuteMode = detectCommuteModeFromText(lower);
+  const commuteDistanceKm = extractCommuteDistanceKm(lower);
+  const { cookingFuel, heatingSource } = detectCookingAndHeating(lower);
 
   const hasAirPurifier = lower.includes('purifier') || lower.includes('hepa') || lower.includes('cr box');
   const wearsMaskOutdoors = lower.includes('mask') || lower.includes('n95') || lower.includes('respirator');
@@ -409,7 +425,7 @@ export function fallbackVisionAudit(roomContext?: string): z.infer<typeof Vision
 
 export function fallbackAsk(
   question: string,
-  context?: { city?: string; aqi?: number; pm25?: number; profile?: any; ledger?: any }
+  context?: { city?: string; aqi?: number; pm25?: number; profile?: unknown; ledger?: unknown }
 ): { answer: string; isGrounded: boolean } {
   const q = question.toLowerCase();
   const aqi = context?.aqi || 280;

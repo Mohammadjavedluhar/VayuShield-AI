@@ -17,6 +17,12 @@ interface WhatIfSimulatorProps {
   language?: Language;
 }
 
+const getPurifierRuntimeBadge = (hours: number): string => {
+  if (hours >= 20) return 'Continuous Clean';
+  if (hours >= 12) return 'Overnight + Evening';
+  return 'Part-time';
+};
+
 export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
   ambientPm25,
   profile,
@@ -107,7 +113,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
             <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               <label htmlFor="whatif-purifier-hours">Air Purifier / CR Box Runtime: {purifierHours} hours / day</label>
               <span className="text-cyan-500 font-extrabold">
-                {purifierHours >= 20 ? 'Continuous Clean' : purifierHours >= 12 ? 'Overnight + Evening' : 'Part-time'}
+                {getPurifierRuntimeBadge(purifierHours)}
               </span>
             </div>
             <input

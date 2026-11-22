@@ -94,6 +94,37 @@ export const SURFACE_DEPOSITION_RATE_K = 0.35;
 /**
  * Estimates steady-state indoor PM2.5 concentration using EPA Mass Balance Model
  */
+function determineDominantHazard(
+  selfGeneratedIndoorPm25: number,
+  infiltratedOutdoorPm25: number,
+  cookingFuel: string,
+  incenseUsage: string
+): string {
+  if (selfGeneratedIndoorPm25 <= infiltratedOutdoorPm25) {
+    return 'Ambient Smog Infiltration';
+  }
+  if (cookingFuel.includes('biomass')) {
+    return 'Solid Fuel Biomass Chulha Smoke';
+  }
+  if (incenseUsage !== 'none') {
+    return 'Indoor Incense / Agarbatti Burning';
+  }
+  return 'Unvented Cooking Emissions';
+}
+
+function determineVentilationRating(
+  indoorPm25: number,
+  ratioIndoorOutdoor: number
+): 'sealed_clean' | 'moderate' | 'hazardously_unfiltered' {
+  if (indoorPm25 <= 35) {
+    return 'sealed_clean';
+  }
+  if (indoorPm25 >= 150 || ratioIndoorOutdoor > 0.75) {
+    return 'hazardously_unfiltered';
+  }
+  return 'moderate';
+}
+
 export function estimateIndoorAirQuality(inputs: IndoorEstimatorInputs): IndoorEstimatorResult {
   const outdoorPm25 = Math.max(5, inputs.outdoorPm25);
   const outdoorAqiCalc = calculatePm25Aqi(outdoorPm25);
@@ -138,21 +169,13 @@ export function estimateIndoorAirQuality(inputs: IndoorEstimatorInputs): IndoorE
   const ratioIndoorOutdoor = Number((indoorPm25 / outdoorPm25).toFixed(2));
 
   // Ventilation rating & dominant hazard
-  let ventilationRating: 'sealed_clean' | 'moderate' | 'hazardously_unfiltered' = 'moderate';
-  if (indoorPm25 <= 35) {
-    ventilationRating = 'sealed_clean';
-  } else if (indoorPm25 >= 150 || ratioIndoorOutdoor > 0.75) {
-    ventilationRating = 'hazardously_unfiltered';
-  }
-
-  let dominantHazard = 'Ambient Smog Infiltration';
-  if (selfGeneratedIndoorPm25 > infiltratedOutdoorPm25) {
-    dominantHazard = inputs.cookingFuel.includes('biomass')
-      ? 'Solid Fuel Biomass Chulha Smoke'
-      : inputs.incenseUsage !== 'none'
-      ? 'Indoor Incense / Agarbatti Burning'
-      : 'Unvented Cooking Emissions';
-  }
+  const ventilationRating = determineVentilationRating(indoorPm25, ratioIndoorOutdoor);
+  const dominantHazard = determineDominantHazard(
+    selfGeneratedIndoorPm25,
+    infiltratedOutdoorPm25,
+    inputs.cookingFuel,
+    inputs.incenseUsage
+  );
 
   // Targeted action steps
   const actionSteps: Array<{ title: string; action: string; impact: string }> = [];
