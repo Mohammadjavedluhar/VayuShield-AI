@@ -11,8 +11,11 @@ export async function fetchAirQualityData(
   longitude: number,
   cityName: string = 'Delhi'
 ): Promise<AirQualityData> {
+  const safeLat = Math.max(-90, Math.min(90, Number(latitude) || 0));
+  const safeLon = Math.max(-180, Math.min(180, Number(longitude) || 0));
+
   try {
-    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,us_aqi&current=us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide&timezone=auto&forecast_days=2`;
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${safeLat}&longitude=${safeLon}&hourly=pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,us_aqi&current=us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide&timezone=auto&forecast_days=2`;
 
     const res = await fetch(url);
     if (!res.ok) {

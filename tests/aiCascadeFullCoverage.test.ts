@@ -8,6 +8,17 @@ const SampleSchema = z.object({
   val: z.number(),
 });
 
+function setupMockGeminiClient(mockGenerateContent: any) {
+  const mockClient = {
+    models: {
+      generateContent: mockGenerateContent,
+    },
+  };
+  vi.spyOn(geminiClientModule, 'hasGeminiKey').mockReturnValue(true);
+  vi.spyOn(geminiClientModule, 'getGeminiClient').mockReturnValue(mockClient as any);
+  return mockClient;
+}
+
 describe('AI Cascade Full Resilience Coverage - tests/aiCascadeFullCoverage.test.ts', () => {
   it('covers MAX_CACHE_ENTRIES eviction in setToCache', () => {
     // Fill cache with over 500 items to trigger oldestKey eviction
@@ -45,15 +56,7 @@ describe('AI Cascade Full Resilience Coverage - tests/aiCascadeFullCoverage.test
     const mockGenerateContent = vi.fn().mockResolvedValue({
       text: JSON.stringify({ status: 'gemini_flash_success', val: 99 }),
     });
-
-    const mockClient = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
-
-    vi.spyOn(geminiClientModule, 'hasGeminiKey').mockReturnValue(true);
-    vi.spyOn(geminiClientModule, 'getGeminiClient').mockReturnValue(mockClient as any);
+    setupMockGeminiClient(mockGenerateContent);
 
     const result = await executeAiCascade({
       task: 'primary_tier2_test',
@@ -79,15 +82,7 @@ describe('AI Cascade Full Resilience Coverage - tests/aiCascadeFullCoverage.test
       .mockResolvedValueOnce({
         text: JSON.stringify({ status: 'retry_success', val: 42 }),
       });
-
-    const mockClient = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
-
-    vi.spyOn(geminiClientModule, 'hasGeminiKey').mockReturnValue(true);
-    vi.spyOn(geminiClientModule, 'getGeminiClient').mockReturnValue(mockClient as any);
+    setupMockGeminiClient(mockGenerateContent);
 
     const result = await executeAiCascade({
       task: 'tier2_retry_test',
@@ -111,15 +106,7 @@ describe('AI Cascade Full Resilience Coverage - tests/aiCascadeFullCoverage.test
       .mockResolvedValueOnce({
         text: JSON.stringify({ status: 'flash_lite_success', val: 88 }),
       });
-
-    const mockClient = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
-
-    vi.spyOn(geminiClientModule, 'hasGeminiKey').mockReturnValue(true);
-    vi.spyOn(geminiClientModule, 'getGeminiClient').mockReturnValue(mockClient as any);
+    setupMockGeminiClient(mockGenerateContent);
 
     const result = await executeAiCascade({
       task: 'tier3_fallback_test',
@@ -141,15 +128,7 @@ describe('AI Cascade Full Resilience Coverage - tests/aiCascadeFullCoverage.test
     const mockGenerateContent = vi
       .fn()
       .mockRejectedValue(new Error('Network offline or quota exceeded'));
-
-    const mockClient = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
-
-    vi.spyOn(geminiClientModule, 'hasGeminiKey').mockReturnValue(true);
-    vi.spyOn(geminiClientModule, 'getGeminiClient').mockReturnValue(mockClient as any);
+    setupMockGeminiClient(mockGenerateContent);
 
     const result = await executeAiCascade({
       task: 'all_fail_test',

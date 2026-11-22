@@ -1,10 +1,8 @@
 import { executeAiCascade } from './_lib/aiCascade';
 import { fallbackIntake } from './_lib/deterministicFallbacks';
 import {
-  applyCorsHeaders,
-  checkRateLimit,
-  getClientIp,
-  parseRequestBody,
+  handlePreflightAndRateLimit,
+  parseAndValidateRequest,
   sendJson,
   type ExtendedRequest,
   type ExtendedResponse,
@@ -16,38 +14,15 @@ import { calculateHouseholdVulnerability } from '../src/domain/impactEngine';
  * Serverless API handler for structured family air vulnerability intake.
  */
 export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
-  applyCorsHeaders(req, res);
-
-  if (req.method === 'OPTIONS') {
-    sendJson(res, 200, { ok: true });
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
-    return;
-  }
-
-  const clientIp = getClientIp(req);
-  const rateCheck = checkRateLimit(clientIp);
-  if (!rateCheck.allowed) {
-    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+  if (!handlePreflightAndRateLimit(req, res)) {
     return;
   }
 
   try {
-    const rawBody = await parseRequestBody(req);
-    const parsedInput = IntakeRequestSchema.safeParse(rawBody);
+    const input = await parseAndValidateRequest(req, res, IntakeRequestSchema);
+    if (!input) return;
 
-    if (!parsedInput.success) {
-      sendJson(res, 400, {
-        error: 'Invalid request body',
-        details: parsedInput.error.format(),
-      });
-      return;
-    }
-
-    const { text, cityHint } = parsedInput.data;
+    const { text, cityHint } = input;
 
     const systemPrompt = `You are a clinical environmental intake system for VayuShield AI.
 Extract structured household air pollution sensitivity profiles from natural language sentences.

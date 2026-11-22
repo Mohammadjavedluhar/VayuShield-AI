@@ -166,18 +166,20 @@ export interface CleanHourWindow {
   advice: string;
 }
 
+export interface ActionItem {
+  id: string;
+  task: string;
+  category: 'immediate' | 'daily' | 'equipment';
+  urgency: 'high' | 'medium' | 'low';
+  rationale: string;
+}
+
 export interface PersonalizedPlan {
   householdProfile: HouseholdProfile;
   airQuality: AirQualityData;
   impactMetrics: ImpactLedgerMetrics;
   windows: CleanHourWindow[];
-  actionChecklist: Array<{
-    id: string;
-    task: string;
-    category: 'immediate' | 'daily' | 'equipment';
-    urgency: 'high' | 'medium' | 'low';
-    rationale: string;
-  }>;
+  actionChecklist: ActionItem[];
   aiExplanation: string;
   certifiedNumbersOnly: boolean;
 }

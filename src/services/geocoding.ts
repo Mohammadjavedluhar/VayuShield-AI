@@ -53,13 +53,31 @@ export async function searchCities(query: string): Promise<CityLocation[]> {
     if (!res.ok) return matchingPresets;
 
     const results = await res.json();
-    const geocoded: CityLocation[] = results.map((item: any) => ({
-      name: item.name || item.display_name.split(',')[0],
-      country: item.address?.country || '',
-      region: item.address?.state || item.address?.county || '',
-      latitude: Number.parseFloat(item.lat),
-      longitude: Number.parseFloat(item.lon),
-    }));
+    if (!Array.isArray(results)) return matchingPresets;
+
+    const geocoded: CityLocation[] = [];
+    for (const item of results) {
+      if (!item || typeof item !== 'object') continue;
+      const lat = Number.parseFloat(String((item as Record<string, unknown>).lat));
+      const lon = Number.parseFloat(String((item as Record<string, unknown>).lon));
+      if (Number.isNaN(lat) || Number.isNaN(lon)) continue;
+
+      const rawDisplayName = typeof (item as Record<string, unknown>).display_name === 'string'
+        ? (item as Record<string, unknown>).display_name as string
+        : '';
+      const rawName = typeof (item as Record<string, unknown>).name === 'string'
+        ? (item as Record<string, unknown>).name as string
+        : rawDisplayName.split(',')[0];
+      const address = (item as Record<string, unknown>).address as Record<string, string> | undefined;
+
+      geocoded.push({
+        name: rawName || 'Unknown Location',
+        country: address?.country || '',
+        region: address?.state || address?.county || '',
+        latitude: lat,
+        longitude: lon,
+      });
+    }
 
     // Merge without duplicates
     const combined = [...matchingPresets];

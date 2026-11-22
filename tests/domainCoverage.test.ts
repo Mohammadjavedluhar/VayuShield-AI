@@ -33,7 +33,13 @@ import {
   getStoredReports,
   saveStoredReports,
 } from '../src/domain/communityReports';
+import {
+  computeCleanHourWindows,
+  generateDefaultHourly,
+  getDefaultActionChecklist,
+} from '../src/domain/cleanHours';
 import type { HouseholdProfile } from '../src/domain/types';
+import { createTestProfile } from './testHelpers';
 
 describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
   describe('airQuality.ts edge cases', () => {
@@ -233,24 +239,17 @@ describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
   describe('impactEngine.ts edge cases', () => {
     it('covers all vulnerability scoring branches and risk factors', () => {
       // Low vulnerability profile
-      const lowProfile: HouseholdProfile = {
+      const lowProfile: HouseholdProfile = createTestProfile({
         householdSize: 2,
         city: 'Shimla',
-        hasAsthma: false,
-        hasCopdOrCardiac: false,
-        hasChildren: false,
-        hasElderly: false,
-        isPregnant: false,
         commuteMode: 'metro',
         commuteDistanceKm: 5,
         cookingFuel: 'induction',
-        heatingSource: 'none',
         hasAirPurifier: true,
         wearsMaskOutdoors: true,
         vulnerabilityScore: 10,
         vulnerabilityLevel: 'low',
-        riskFactors: [],
-      };
+      });
       const lowRes = calculateHouseholdVulnerability(lowProfile);
       expect(lowRes.level).toBe('low');
 
@@ -350,24 +349,11 @@ describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
       // calculateMasterImpactLedger with all interventions disabled
       const zeroLedger = calculateMasterImpactLedger(
         150,
-        {
+        createTestProfile({
           householdSize: 3,
           city: 'Delhi',
-          hasAsthma: false,
-          hasCopdOrCardiac: false,
-          hasChildren: false,
-          hasElderly: false,
-          isPregnant: false,
-          commuteMode: 'car',
           commuteDistanceKm: 10,
-          cookingFuel: 'lpg',
-          heatingSource: 'none',
-          hasAirPurifier: false,
-          wearsMaskOutdoors: false,
-          vulnerabilityScore: 20,
-          vulnerabilityLevel: 'low',
-          riskFactors: [],
-        },
+        }),
         {
           useN95Mask: false,
           useAirPurifier: false,
@@ -709,6 +695,84 @@ describe('Domain Full Coverage - tests/domainCoverage.test.ts', () => {
       const mitigatedSaved = JSON.parse(mockStorage['vayushield_community_reports']);
       expect(mitigatedSaved[0].status).toBe('mitigated');
       expect(mitigatedSaved[0].reporterName).toBe('Priya Sharma');
+    });
+  });
+
+  describe('cleanHours.ts full branch coverage', () => {
+    it('covers generateDefaultHourly across all aqi categories and diurnal intervals', () => {
+      const moderate = generateDefaultHourly(30);
+      expect(moderate.length).toBe(24);
+      expect(moderate.some((h) => h.aqiCategory === 'moderate')).toBe(true);
+
+      const unhealthy = generateDefaultHourly(120);
+      expect(unhealthy.some((h) => h.aqiCategory === 'unhealthy')).toBe(true);
+
+      const veryUnhealthy = generateDefaultHourly(180);
+      expect(veryUnhealthy.some((h) => h.aqiCategory === 'veryUnhealthy')).toBe(true);
+
+      const hazardous = generateDefaultHourly(350);
+      expect(hazardous.some((h) => h.aqiCategory === 'hazardous')).toBe(true);
+    });
+
+    it('covers computeCleanHourWindows with fallbacks, safe/caution/danger status, and missing time blocks', () => {
+      // 1. Fallback when hourly < 24
+      const fallbackWindows = computeCleanHourWindows([], 100);
+      expect(fallbackWindows.length).toBe(4);
+      expect(fallbackWindows[0].type).toBe('exercise');
+
+      // 2. Safe air quality windows (aqi <= 120 / <= 150)
+      const cleanDay = Array.from({ length: 24 }, (_, i) => ({
+        hour: i,
+        aqi: 80,
+      }));
+      const safeWindows = computeCleanHourWindows(cleanDay, 80);
+      expect(safeWindows[0].status).toBe('safe');
+      expect(safeWindows[2].status).toBe('safe');
+
+      // 3. Caution air quality windows (aqi between 151 and 250)
+      const cautionDay = Array.from({ length: 24 }, (_, i) => ({
+        hour: i,
+        aqi: 200,
+      }));
+      const cautionWindows = computeCleanHourWindows(cautionDay, 200);
+      expect(cautionWindows[0].status).toBe('caution');
+      expect(cautionWindows[2].status).toBe('caution');
+
+      // 4. Danger air quality windows (aqi > 250)
+      const dangerDay = Array.from({ length: 24 }, (_, i) => ({
+        hour: i,
+        aqi: 350,
+      }));
+      const dangerWindows = computeCleanHourWindows(dangerDay, 350);
+      expect(dangerWindows[0].status).toBe('danger');
+
+      // 5. Missing afternoon hours (all outside 11-16) and missing morning hours (all outside 7-9) and night (outside 22-6)
+      const customDay = Array.from({ length: 24 }, () => ({
+        hour: 10,
+        aqi: 180,
+      }));
+      const edgeWindows = computeCleanHourWindows(customDay, 180);
+      expect(edgeWindows.length).toBe(4);
+      expect(edgeWindows[1].avgAqi).toBe(320); // Fallback morning AQI
+      expect(edgeWindows[3].avgAqi).toBe(340); // Fallback night AQI
+    });
+
+    it('covers getDefaultActionChecklist', () => {
+      const mockLedger = {
+        baselineInhaledPm25DoseUgPerDay: 100,
+        protectedInhaledPm25DoseUgPerDay: 30,
+        inhaledPm25ReductionPct: 70,
+        baselineCigarettesPerDay: 8,
+        avoidedCigarettesPerDay: 6,
+        avoidedCigarettesPerWeek: 42,
+        co2SavedKgPerWeek: 15,
+        cleanAirHoursGainedPerDay: 12,
+        riskReductionScore: 75,
+      };
+      const items = getDefaultActionChecklist(mockLedger);
+      expect(items.length).toBe(4);
+      expect(items[1].rationale).toContain('70%');
+      expect(items[1].rationale).toContain('42');
     });
   });
 });

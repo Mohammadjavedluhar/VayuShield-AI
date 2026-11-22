@@ -1,9 +1,7 @@
 import { executeAiCascade } from './_lib/aiCascade';
 import {
-  applyCorsHeaders,
-  checkRateLimit,
-  getClientIp,
-  parseRequestBody,
+  handlePreflightAndRateLimit,
+  parseAndValidateRequest,
   sendJson,
   type ExtendedRequest,
   type ExtendedResponse,
@@ -11,7 +9,7 @@ import {
 import { PlanRequestSchema } from './_lib/types';
 import { calculateMasterImpactLedger } from '../src/domain/impactEngine';
 import { verifyAndSanitizeText, enforceGroundedMetrics } from '../src/domain/numbersGuard';
-import { CleanHourWindow, HourlyForecastItem } from '../src/domain/types';
+import { computeCleanHourWindows, getDefaultActionChecklist } from '../src/domain/cleanHours';
 import { z } from 'zod';
 
 const ActionChecklistSchema = z.object({
@@ -31,38 +29,15 @@ const ActionChecklistSchema = z.object({
  * Serverless API handler for synthesizing personalized household smog action plans.
  */
 export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
-  applyCorsHeaders(req, res);
-
-  if (req.method === 'OPTIONS') {
-    sendJson(res, 200, { ok: true });
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
-    return;
-  }
-
-  const clientIp = getClientIp(req);
-  const rateCheck = checkRateLimit(clientIp);
-  if (!rateCheck.allowed) {
-    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+  if (!handlePreflightAndRateLimit(req, res)) {
     return;
   }
 
   try {
-    const rawBody = await parseRequestBody(req);
-    const parsedInput = PlanRequestSchema.safeParse(rawBody);
+    const input = await parseAndValidateRequest(req, res, PlanRequestSchema);
+    if (!input) return;
 
-    if (!parsedInput.success) {
-      sendJson(res, 400, {
-        error: 'Invalid request body',
-        details: parsedInput.error.format(),
-      });
-      return;
-    }
-
-    const { profile, airQuality, interventions } = parsedInput.data;
+    const { profile, airQuality, interventions } = input;
     const currentPm25 = airQuality?.pm25 || 160;
 
     // 1. Calculate deterministic ground truth impact ledger
@@ -81,15 +56,14 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
       interventions || defaultInterventions
     );
 
-    // 2. Compute clean-hour routine windows based on live hourly forecast
-    const hourly: HourlyForecastItem[] = (airQuality?.hourlyForecast as HourlyForecastItem[]) || [];
-    const windows: CleanHourWindow[] = computeCleanHourWindows(hourly, currentPm25);
+    // 2. Compute clean-hour windows using shared deterministic helper
+    const windows = computeCleanHourWindows(airQuality?.hourlyForecast || [], currentPm25);
 
-    // 3. AI Cascade for contextual action checklist & personalized explanation
-    const systemPrompt = `You are VayuShield AI's chief clinical and environmental health planner.
-Synthesize a personalized action plan for a household during severe smog.
-IMPORTANT GROUNDING RULE: You may ONLY use the exact statistics provided in the prompt. Do not invent any percentage reductions, cigarette counts, or CO2 numbers.
-Output JSON conforming to:
+    // 3. AI synthesis with 4-Tier Resilience
+    const systemPrompt = `You are VayuShield AI's chief clinical pulmonologist and air exposure scientist.
+Synthesize a customized clean-air plan strictly respecting the calculated impact figures.
+Every statistic in your output MUST match the certified metrics exactly.
+Output ONLY valid JSON:
 {
   "actionChecklist": [
     {
@@ -119,47 +93,17 @@ Create 4 to 5 high-priority action checklist tasks and a 2-sentence clinical exp
       systemInstruction: systemPrompt,
       zodSchema: ActionChecklistSchema,
       fallbackFn: () => ({
-        actionChecklist: [
-          {
-            id: 'task-1',
-            task: 'Seal window gaps with weatherstripping tape',
-            category: 'immediate',
-            urgency: 'high',
-            rationale: 'Stops cold morning smog drafts from entering bedrooms.',
-          },
-          {
-            id: 'task-2',
-            task: 'Mandate certified N95 respirators for all outdoor travel',
-            category: 'daily',
-            urgency: 'high',
-            rationale: 'Filters over 95% of inhaled fine particulates during commute.',
-          },
-          {
-            id: 'task-3',
-            task: 'Deploy Corsi-Rosenthal Box or HEPA cleaner continuously',
-            category: 'equipment',
-            urgency: 'high',
-            rationale: `Enables ${groundTruthLedger.inhaledPm25ReductionPct}% particulate reduction and saves ${groundTruthLedger.avoidedCigarettesPerWeek} cigarette-equivalents weekly.`,
-          },
-          {
-            id: 'task-4',
-            task: 'Shift outdoor exertion to 1:00 PM – 3:30 PM window',
-            category: 'daily',
-            urgency: 'medium',
-            rationale: 'Avoids morning and evening thermal inversion particulate spikes.',
-          },
-        ],
+        actionChecklist: getDefaultActionChecklist(groundTruthLedger),
         aiExplanation: `By combining N95 outdoor protection with indoor air scrubbing, your family achieves a verified ${groundTruthLedger.inhaledPm25ReductionPct}% reduction in inhaled PM2.5, avoiding ${groundTruthLedger.avoidedCigarettesPerWeek} cigarettes of toxic smoke exposure each week while cutting ${groundTruthLedger.co2SavedKgPerWeek} kg of CO2 emissions.`,
       }),
       temperature: 0.1,
     });
 
-    // 4. Numbers Guard Enforcement on the explanation
-    const guardResult = verifyAndSanitizeText(cascadeResult.data.aiExplanation, {
-      ...groundTruthLedger,
-      pm25: currentPm25,
-      currentAqi: airQuality?.currentAqi || 300,
-    });
+    // 4. Grounding verification
+    const guardResult = verifyAndSanitizeText(
+      cascadeResult.data.aiExplanation,
+      groundTruthLedger
+    );
 
     sendJson(res, 200, {
       impactMetrics: enforceGroundedMetrics({}, groundTruthLedger),
@@ -176,92 +120,4 @@ Create 4 to 5 high-priority action checklist tasks and a 2-sentence clinical exp
     console.error('[API /api/plan error]', errorMsg);
     sendJson(res, 500, { error: 'Failed to generate plan.' });
   }
-}
-
-function computeCleanHourWindows(hourly: HourlyForecastItem[], currentPm25: number): CleanHourWindow[] {
-  const dayHours = hourly.length >= 24 ? hourly.slice(0, 24) : generateDefaultHourly(currentPm25);
-
-  const afternoonHours = dayHours.filter((h) => h.hour >= 11 && h.hour <= 16);
-  const bestExerciseHour = afternoonHours.reduce((best, cur) => (cur.aqi < best.aqi ? cur : best), afternoonHours[0] || dayHours[14]);
-
-  const morningCommute = dayHours.filter((h) => h.hour >= 7 && h.hour <= 9);
-  const avgMorningAqi = morningCommute.length > 0
-    ? Math.round(morningCommute.reduce((s, h) => s + h.aqi, 0) / morningCommute.length)
-    : 320;
-
-  const bestVentHour = bestExerciseHour;
-
-  const nightHours = dayHours.filter((h) => h.hour >= 22 || h.hour <= 6);
-  const avgNightAqi = nightHours.length > 0
-    ? Math.round(nightHours.reduce((s, h) => s + h.aqi, 0) / nightHours.length)
-    : 340;
-
-  return [
-    {
-      type: 'exercise',
-      title: 'Safest Outdoor Exercise / Walk Window',
-      startHour: Math.max(11, bestExerciseHour.hour - 1),
-      endHour: Math.min(16, bestExerciseHour.hour + 2),
-      avgAqi: bestExerciseHour.aqi,
-      status: bestExerciseHour.aqi <= 150 ? 'safe' : bestExerciseHour.aqi <= 250 ? 'caution' : 'danger',
-      advice:
-        bestExerciseHour.aqi <= 150
-          ? 'Thermal inversion is lifted by solar warmth. Safest window for brisk walking or errands.'
-          : 'Air remains unhealthy even at midday. Limit outdoor cardio; prefer indoor workouts.',
-    },
-    {
-      type: 'commute',
-      title: 'Morning School & Office Commute',
-      startHour: 7,
-      endHour: 10,
-      avgAqi: avgMorningAqi,
-      status: 'danger',
-      advice: 'Severe ground-level smoke trapped by nocturnal cold layer. N95 respirators mandatory; keep car recirculate mode ON.',
-    },
-    {
-      type: 'ventilation',
-      title: 'Filtered Air Exchange & Cross-Ventilation',
-      startHour: 13,
-      endHour: 15,
-      avgAqi: bestVentHour.aqi,
-      status: bestVentHour.aqi <= 120 ? 'safe' : 'caution',
-      advice:
-        bestVentHour.aqi <= 120
-          ? 'Brief 15-minute cross-ventilation permissible to flush indoor CO2, followed by immediate filtration.'
-          : 'Do NOT open windows. Ambient smog is too hazardous. Rely on indoor mechanical filtration with carbon stage.',
-    },
-    {
-      type: 'sleep',
-      title: 'Nighttime Sleep Air Management',
-      startHour: 22,
-      endHour: 6,
-      avgAqi: avgNightAqi,
-      status: 'caution',
-      advice: 'Keep bedroom doors and windows tightly shut. Run Corsi-Rosenthal box or HEPA on medium-high speed all night.',
-    },
-  ];
-}
-
-function generateDefaultHourly(basePm25: number): HourlyForecastItem[] {
-  const items: HourlyForecastItem[] = [];
-  for (let i = 0; i < 24; i++) {
-    const diurnalFactor = 1 + 0.35 * Math.sin(((i - 8) * Math.PI) / 12) * -1;
-    const pm = Math.max(20, Math.round(basePm25 * diurnalFactor));
-    const aqi = Math.min(500, Math.round((pm / 150) * 200));
-
-    items.push({
-      time: `${i.toString().padStart(2, '0')}:00`,
-      hour: i,
-      pm25: pm,
-      pm10: Math.round(pm * 1.6),
-      no2: Math.round(40 + pm * 0.2),
-      aqi,
-      aqiCategory: aqi > 300 ? 'hazardous' : aqi > 200 ? 'veryUnhealthy' : aqi > 150 ? 'unhealthy' : 'moderate',
-      isExerciseSafe: i >= 12 && i <= 15 && aqi < 200,
-      isCommuteWarning: (i >= 7 && i <= 10) || (i >= 19 && i <= 22),
-      isVentilationSafe: i === 14 && aqi < 150,
-      recommendation: i >= 12 && i <= 15 ? 'Moderate solar dispersion' : 'Inversion smog peak',
-    });
-  }
-  return items;
 }

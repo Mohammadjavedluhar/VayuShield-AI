@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import type { ZodSchema } from 'zod';
 
 export interface ExtendedRequest extends IncomingMessage {
   body?: unknown;
@@ -116,18 +117,83 @@ export async function parseRequestBody(
 
 /**
  * Returns safe CORS origin header matching allowed patterns or same-origin.
+ * Validates origin using URL parsing to guarantee complete immunity against ReDoS attacks.
  */
 function resolveAllowedOrigin(incomingOrigin?: string): string {
-  if (!incomingOrigin) return '';
-  // Allow localhost for local development
-  if (/^http:\/\/localhost(:\d+)?$/.test(incomingOrigin)) {
-    return incomingOrigin;
-  }
-  // Allow Vercel deployment and custom domains
-  if (/^https:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(incomingOrigin)) {
-    return incomingOrigin;
+  if (!incomingOrigin || typeof incomingOrigin !== 'string') return '';
+  try {
+    const parsed = new URL(incomingOrigin);
+    // Allow localhost for local development
+    if (parsed.protocol === 'http:' && parsed.hostname === 'localhost') {
+      return incomingOrigin;
+    }
+    // Allow Vercel deployment and custom subdomains safely without regex backtracking
+    if (
+      parsed.protocol === 'https:' &&
+      (parsed.hostname === 'vercel.app' || parsed.hostname.endsWith('.vercel.app')) &&
+      !parsed.hostname.includes('..')
+    ) {
+      return incomingOrigin;
+    }
+  } catch {
+    return '';
   }
   return '';
+}
+
+/**
+ * Handles CORS headers, OPTIONS preflight, method restriction, and rate limiting.
+ * Returns true if the request can proceed, or false if already responded to.
+ */
+export function handlePreflightAndRateLimit(
+  req: ExtendedRequest,
+  res: ExtendedResponse,
+  allowedMethod: string = 'POST'
+): boolean {
+  applyCorsHeaders(req, res);
+
+  if (req.method === 'OPTIONS') {
+    sendJson(res, 200, { ok: true });
+    return false;
+  }
+
+  if (req.method !== allowedMethod) {
+    sendJson(res, 405, { error: `Method not allowed. Use ${allowedMethod}.` });
+    return false;
+  }
+
+  const clientIp = getClientIp(req);
+  const rateCheck = checkRateLimit(clientIp);
+  if (!rateCheck.allowed) {
+    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Parses and validates the request body against a Zod schema.
+ * Automatically sends 400 Bad Request on validation failure.
+ */
+export async function parseAndValidateRequest<T>(
+  req: ExtendedRequest,
+  res: ExtendedResponse,
+  schema: ZodSchema<T>,
+  maxBytes: number = MAX_TEXT_PAYLOAD_BYTES
+): Promise<T | null> {
+  const rawBody = await parseRequestBody(req, maxBytes);
+  const parsedInput = schema.safeParse(rawBody);
+
+  if (!parsedInput.success) {
+    sendJson(res, 400, {
+      error: 'Invalid request body',
+      details: parsedInput.error.format(),
+    });
+    return null;
+  }
+
+  return parsedInput.data;
 }
 
 /**

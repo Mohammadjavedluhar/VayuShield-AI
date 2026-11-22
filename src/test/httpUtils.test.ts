@@ -3,12 +3,15 @@ import {
   applyCorsHeaders,
   checkRateLimit,
   getClientIp,
+  handlePreflightAndRateLimit,
+  parseAndValidateRequest,
   parseRequestBody,
   sendJson,
   type ExtendedRequest,
   type ExtendedResponse,
 } from '../../api/_lib/httpUtils';
 import { EventEmitter } from 'events';
+import { z } from 'zod';
 
 describe('HTTP Utilities & Security - httpUtils.ts', () => {
   it('enforces 60 requests per minute rate limiting per IP', () => {
@@ -180,5 +183,93 @@ describe('HTTP Utilities & Security - httpUtils.ts', () => {
     // getClientIp fallback to 127.0.0.1
     const reqNoIp = { headers: {} } as unknown as ExtendedRequest;
     expect(getClientIp(reqNoIp)).toBe('127.0.0.1');
+
+    // Invalid URL and double-dot hostname origin rejection in resolveAllowedOrigin
+    const reqMalformedOrigin = {
+      headers: { origin: 'not-a-valid-url' },
+    } as unknown as ExtendedRequest;
+    const resMalformed = { setHeader: () => {} } as unknown as ExtendedResponse;
+    applyCorsHeaders(reqMalformedOrigin, resMalformed);
+
+    const reqDoubleDot = {
+      headers: { origin: 'https://evil..vercel.app' },
+    } as unknown as ExtendedRequest;
+    const headersDoubleDot: Record<string, string> = {};
+    const resDoubleDot = {
+      setHeader: (k: string, v: string) => {
+        headersDoubleDot[k] = v;
+      },
+    } as unknown as ExtendedResponse;
+    applyCorsHeaders(reqDoubleDot, resDoubleDot);
+    expect(headersDoubleDot['Access-Control-Allow-Origin']).toBeUndefined();
+  });
+
+  it('verifies handlePreflightAndRateLimit and parseAndValidateRequest', async () => {
+    // OPTIONS preflight
+    let statusCode = 0;
+    const resOptions = {
+      statusCode: 200,
+      setHeader: () => {},
+      end: () => {},
+      status: (code: number) => {
+        statusCode = code;
+        return { json: () => {} };
+      },
+    } as unknown as ExtendedResponse;
+    const reqOptions = { method: 'OPTIONS', headers: {} } as unknown as ExtendedRequest;
+    expect(handlePreflightAndRateLimit(reqOptions, resOptions)).toBe(false);
+    expect(statusCode).toBe(200);
+
+    // Wrong HTTP method (e.g. GET)
+    let getStatus = 0;
+    const resGet = {
+      status: (code: number) => {
+        getStatus = code;
+        return { json: () => {} };
+      },
+    } as unknown as ExtendedResponse;
+    const reqGet = { method: 'GET', headers: {} } as unknown as ExtendedRequest;
+    expect(handlePreflightAndRateLimit(reqGet, resGet, 'POST')).toBe(false);
+    expect(getStatus).toBe(405);
+
+    // Rate limited
+    const spamIp = '198.18.0.55';
+    for (let i = 0; i < 60; i++) {
+      checkRateLimit(spamIp);
+    }
+    let limitStatus = 0;
+    const resLimit = {
+      status: (code: number) => {
+        limitStatus = code;
+        return { json: () => {} };
+      },
+    } as unknown as ExtendedResponse;
+    const reqLimit = { method: 'POST', headers: { 'x-forwarded-for': spamIp } } as unknown as ExtendedRequest;
+    expect(handlePreflightAndRateLimit(reqLimit, resLimit)).toBe(false);
+    expect(limitStatus).toBe(429);
+
+    // Valid preflight
+    const validIp = '198.18.0.99';
+    const reqValid = { method: 'POST', headers: { 'x-forwarded-for': validIp } } as unknown as ExtendedRequest;
+    const resValid = { setHeader: () => {} } as unknown as ExtendedResponse;
+    expect(handlePreflightAndRateLimit(reqValid, resValid)).toBe(true);
+
+    // parseAndValidateRequest valid and invalid
+    const TestSchema = z.object({ name: z.string().min(2) });
+    const reqValidBody = { body: { name: 'Vayu' } } as unknown as ExtendedRequest;
+    const validData = await parseAndValidateRequest(reqValidBody, resValid, TestSchema);
+    expect(validData).toEqual({ name: 'Vayu' });
+
+    let badReqStatus = 0;
+    const resBadReq = {
+      status: (code: number) => {
+        badReqStatus = code;
+        return { json: () => {} };
+      },
+    } as unknown as ExtendedResponse;
+    const reqBadBody = { body: { name: 'X' } } as unknown as ExtendedRequest;
+    const badData = await parseAndValidateRequest(reqBadBody, resBadReq, TestSchema);
+    expect(badData).toBeNull();
+    expect(badReqStatus).toBe(400);
   });
 });

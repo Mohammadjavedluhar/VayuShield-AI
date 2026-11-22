@@ -10,6 +10,7 @@ import {
   calculateMasterImpactLedger,
 } from '../domain/impactEngine';
 import { HouseholdProfile, Interventions } from '../domain/types';
+import { createTestProfile, createTestInterventions } from '../../tests/testHelpers';
 
 describe('Deterministic Impact Engine - impactEngine.ts', () => {
   describe('1. Berkeley Earth Cigarette Equivalence', () => {
@@ -227,32 +228,15 @@ describe('Deterministic Impact Engine - impactEngine.ts', () => {
 
   describe('7. Master Impact Ledger Integration', () => {
     it('computes end-to-end ledger metrics cleanly', () => {
-      const profile: HouseholdProfile = {
-        householdSize: 4,
-        city: 'Delhi',
+      const profile: HouseholdProfile = createTestProfile({
         hasAsthma: true,
-        hasCopdOrCardiac: false,
         hasChildren: true,
         hasElderly: true,
-        isPregnant: false,
-        commuteMode: 'car',
-        commuteDistanceKm: 12,
-        cookingFuel: 'lpg',
-        heatingSource: 'none',
-        hasAirPurifier: false,
-        wearsMaskOutdoors: false,
         vulnerabilityScore: 85,
         vulnerabilityLevel: 'critical',
-      };
+      });
 
-      const interventions: Interventions = {
-        useN95Mask: true,
-        useAirPurifier: true,
-        commuteMode: 'metro',
-        cookingFuel: 'induction',
-        roomSealImprovement: true,
-        wetMoppingDaily: true,
-      };
+      const interventions: Interventions = createTestInterventions();
 
       const ledger = calculateMasterImpactLedger(250, profile, interventions);
 

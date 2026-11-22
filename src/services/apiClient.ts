@@ -13,6 +13,10 @@ import {
   calculateMasterImpactLedger,
 } from '../domain/impactEngine';
 import {
+  computeCleanHourWindows,
+  getDefaultActionChecklist,
+} from '../domain/cleanHours';
+import {
   AirQualityData,
   HouseholdProfile,
   ImpactLedgerMetrics,
@@ -21,25 +25,37 @@ import {
   VisionAuditResult,
 } from '../domain/types';
 
+/**
+ * Shared JSON POST helper with network error suppression for graceful offline degradation.
+ */
+async function postJson<T>(endpoint: string, body: unknown): Promise<T | null> {
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      return (await res.json()) as T;
+    }
+  } catch (err) {
+    console.warn(`[ApiClient] ${endpoint} offline, falling back to client-side engine:`, err);
+  }
+  return null;
+}
+
 export async function callIntakeApi(text: string, cityHint?: string): Promise<{
   profile: HouseholdProfile;
   tier: string;
 }> {
-  try {
-    const res = await fetch('/api/intake', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, cityHint }),
-    });
+  const json = await postJson<{ profile?: HouseholdProfile; tier?: string }>(
+    '/api/intake',
+    { text, cityHint }
+  );
 
-    if (res.ok) {
-      const json = await res.json();
-      if (json.profile) {
-        return { profile: json.profile, tier: json.tier || 'tier2_flash' };
-      }
-    }
-  } catch (err) {
-    console.warn('[ApiClient] /api/intake offline, using deterministic client fallback', err);
+  if (json?.profile) {
+    return { profile: json.profile, tier: json.tier || 'tier2_flash' };
   }
 
   // Graceful client-side fallback
@@ -65,25 +81,18 @@ export async function callVisionAuditApi(
   tier: string;
   numbersGrounded: boolean;
 }> {
-  try {
-    const res = await fetch('/api/vision-audit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64, mimeType, roomContext }),
-    });
+  const json = await postJson<{
+    audit?: VisionAuditResult;
+    tier?: string;
+    numbersGrounded?: boolean;
+  }>('/api/vision-audit', { imageBase64, mimeType, roomContext });
 
-    if (res.ok) {
-      const json = await res.json();
-      if (json.audit) {
-        return {
-          audit: json.audit,
-          tier: json.tier || 'tier2_flash',
-          numbersGrounded: Boolean(json.numbersGrounded),
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('[ApiClient] /api/vision-audit offline, using deterministic client fallback', err);
+  if (json?.audit) {
+    return {
+      audit: json.audit,
+      tier: json.tier || 'tier2_flash',
+      numbersGrounded: Boolean(json.numbersGrounded),
+    };
   }
 
   const fallback = fallbackVisionAudit(roomContext);
@@ -105,27 +114,23 @@ export async function callPlanApi(
     interventions
   );
 
-  try {
-    const res = await fetch('/api/plan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profile, airQuality, interventions }),
-    });
+  const json = await postJson<{
+    impactMetrics?: ImpactLedgerMetrics;
+    windows?: PersonalizedPlan['windows'];
+    actionChecklist?: PersonalizedPlan['actionChecklist'];
+    aiExplanation?: string;
+  }>('/api/plan', { profile, airQuality, interventions });
 
-    if (res.ok) {
-      const json = await res.json();
-      return {
-        householdProfile: profile,
-        airQuality,
-        impactMetrics: json.impactMetrics || groundTruthLedger,
-        windows: json.windows || [],
-        actionChecklist: json.actionChecklist || [],
-        aiExplanation: json.aiExplanation || '',
-        certifiedNumbersOnly: true,
-      };
-    }
-  } catch (err) {
-    console.warn('[ApiClient] /api/plan offline, generating deterministic plan', err);
+  if (json) {
+    return {
+      householdProfile: profile,
+      airQuality,
+      impactMetrics: json.impactMetrics || groundTruthLedger,
+      windows: json.windows || computeCleanHourWindows(airQuality.hourlyForecast || [], airQuality.pm25),
+      actionChecklist: json.actionChecklist || getDefaultActionChecklist(groundTruthLedger),
+      aiExplanation: json.aiExplanation || '',
+      certifiedNumbersOnly: true,
+    };
   }
 
   // Client-side deterministic plan
@@ -133,67 +138,8 @@ export async function callPlanApi(
     householdProfile: profile,
     airQuality,
     impactMetrics: groundTruthLedger,
-    windows: [
-      {
-        type: 'exercise',
-        title: 'Safest Outdoor Exercise / Walk Window',
-        startHour: 13,
-        endHour: 15,
-        avgAqi: Math.round(airQuality.currentAqi * 0.7),
-        status: 'safe',
-        advice: 'Solar boundary layer mixing disperses particulate concentrations. Best window for outdoor errands.',
-      },
-      {
-        type: 'commute',
-        title: 'Morning School & Office Commute',
-        startHour: 7,
-        endHour: 10,
-        avgAqi: Math.round(airQuality.currentAqi * 1.3),
-        status: 'danger',
-        advice: 'Ground-level smoke trapped by nocturnal cold layer. N95 respirators mandatory.',
-      },
-      {
-        type: 'ventilation',
-        title: 'Filtered Air Exchange Window',
-        startHour: 14,
-        endHour: 15,
-        avgAqi: Math.round(airQuality.currentAqi * 0.65),
-        status: airQuality.currentAqi > 200 ? 'caution' : 'safe',
-        advice: 'Keep windows sealed during severe smog episodes. Run indoor mechanical filtration.',
-      },
-      {
-        type: 'sleep',
-        title: 'Nighttime Sleep Air Management',
-        startHour: 22,
-        endHour: 6,
-        avgAqi: Math.round(airQuality.currentAqi * 1.2),
-        status: 'caution',
-        advice: 'Keep bedroom doors shut and maintain active air purifier operation through the night.',
-      },
-    ],
-    actionChecklist: [
-      {
-        id: 'c-1',
-        task: 'Equip all family members with certified N95 respirators',
-        category: 'immediate',
-        urgency: 'high',
-        rationale: 'Stops fine PM2.5 from penetrating deep alveolar bronchioles.',
-      },
-      {
-        id: 'c-2',
-        task: 'Deploy Corsi-Rosenthal Box or HEPA filter in main room',
-        category: 'equipment',
-        urgency: 'high',
-        rationale: `Yields ${groundTruthLedger.inhaledPm25ReductionPct}% particulate reduction and prevents ${groundTruthLedger.avoidedCigarettesPerWeek} cigarettes of smoke exposure weekly.`,
-      },
-      {
-        id: 'c-3',
-        task: 'Execute daily damp microfiber wet mopping',
-        category: 'daily',
-        urgency: 'medium',
-        rationale: 'Eliminates settled dust resuspension without kicking particles into the air.',
-      },
-    ],
+    windows: computeCleanHourWindows(airQuality.hourlyForecast || [], airQuality.pm25),
+    actionChecklist: getDefaultActionChecklist(groundTruthLedger),
     aiExplanation: `With your selected interventions, your family will achieve a verified ${groundTruthLedger.inhaledPm25ReductionPct}% reduction in inhaled PM2.5, avoiding ${groundTruthLedger.avoidedCigarettesPerWeek} cigarettes equivalent of toxic particulate exposure per week and eliminating ${groundTruthLedger.co2SavedKgPerWeek} kg of CO2 emissions.`,
     certifiedNumbersOnly: true,
   };
@@ -208,24 +154,20 @@ export async function callAskApi(
   isGrounded: boolean;
   tier: string;
 }> {
-  try {
-    const res = await fetch('/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, context }),
-    });
+  const json = await postJson<{
+    answer?: string;
+    recommendations?: string[];
+    isGrounded?: boolean;
+    tier?: string;
+  }>('/api/ask', { question, context });
 
-    if (res.ok) {
-      const json = await res.json();
-      return {
-        answer: json.answer,
-        recommendations: json.recommendations || [],
-        isGrounded: Boolean(json.isGrounded),
-        tier: json.tier || 'tier2_flash',
-      };
-    }
-  } catch (err) {
-    console.warn('[ApiClient] /api/ask offline, serving deterministic answer', err);
+  if (json?.answer) {
+    return {
+      answer: json.answer,
+      recommendations: json.recommendations || [],
+      isGrounded: Boolean(json.isGrounded),
+      tier: json.tier || 'tier2_flash',
+    };
   }
 
   const fb = fallbackAsk(question, context);

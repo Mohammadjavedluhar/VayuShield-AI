@@ -42,7 +42,7 @@ export const CommunityWatch: React.FC<CommunityWatchProps> = ({ city }) => {
     if (!neighborhood.trim() || !description.trim()) return;
 
     const newReport: CommunityReport = {
-      id: `rep-${Date.now()}`,
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `rep-${Date.now()}`,
       city,
       neighborhood: neighborhood.trim(),
       incidentType,

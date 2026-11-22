@@ -1,10 +1,8 @@
 import { executeAiCascade } from './_lib/aiCascade';
 import { fallbackAsk } from './_lib/deterministicFallbacks';
 import {
-  applyCorsHeaders,
-  checkRateLimit,
-  getClientIp,
-  parseRequestBody,
+  handlePreflightAndRateLimit,
+  parseAndValidateRequest,
   sendJson,
   type ExtendedRequest,
   type ExtendedResponse,
@@ -22,38 +20,15 @@ const AskResponseSchema = z.object({
  * Serverless API handler for grounded clinical and air quality inquiries.
  */
 export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
-  applyCorsHeaders(req, res);
-
-  if (req.method === 'OPTIONS') {
-    sendJson(res, 200, { ok: true });
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
-    return;
-  }
-
-  const clientIp = getClientIp(req);
-  const rateCheck = checkRateLimit(clientIp);
-  if (!rateCheck.allowed) {
-    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+  if (!handlePreflightAndRateLimit(req, res)) {
     return;
   }
 
   try {
-    const rawBody = await parseRequestBody(req);
-    const parsedInput = AskRequestSchema.safeParse(rawBody);
+    const input = await parseAndValidateRequest(req, res, AskRequestSchema);
+    if (!input) return;
 
-    if (!parsedInput.success) {
-      sendJson(res, 400, {
-        error: 'Invalid request body',
-        details: parsedInput.error.format(),
-      });
-      return;
-    }
-
-    const { question, context } = parsedInput.data;
+    const { question, context } = input;
 
     const systemPrompt = `You are VayuShield AI's clinical and environmental air quality doctor.
 You provide precise, evidence-based guidance for urban smog crises (Delhi-NCR, winter inversion).

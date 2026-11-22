@@ -1,10 +1,8 @@
 import { executeAiCascade } from './_lib/aiCascade';
 import { fallbackVisionAudit } from './_lib/deterministicFallbacks';
 import {
-  applyCorsHeaders,
-  checkRateLimit,
-  getClientIp,
-  parseRequestBody,
+  handlePreflightAndRateLimit,
+  parseAndValidateRequest,
   sendJson,
   MAX_VISION_PAYLOAD_BYTES,
   type ExtendedRequest,
@@ -18,38 +16,15 @@ import { verifyAndSanitizeText } from '../src/domain/numbersGuard';
  * Serverless API handler for multimodal image inspection of masks, filters, and rooms.
  */
 export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
-  applyCorsHeaders(req, res);
-
-  if (req.method === 'OPTIONS') {
-    sendJson(res, 200, { ok: true });
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
-    return;
-  }
-
-  const clientIp = getClientIp(req);
-  const rateCheck = checkRateLimit(clientIp);
-  if (!rateCheck.allowed) {
-    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
+  if (!handlePreflightAndRateLimit(req, res)) {
     return;
   }
 
   try {
-    const rawBody = await parseRequestBody(req, MAX_VISION_PAYLOAD_BYTES);
-    const parsedInput = VisionRequestSchema.safeParse(rawBody);
+    const input = await parseAndValidateRequest(req, res, VisionRequestSchema, MAX_VISION_PAYLOAD_BYTES);
+    if (!input) return;
 
-    if (!parsedInput.success) {
-      sendJson(res, 400, {
-        error: 'Invalid request body',
-        details: parsedInput.error.format(),
-      });
-      return;
-    }
-
-    const { imageBase64, mimeType, roomContext } = parsedInput.data;
+    const { imageBase64, mimeType, roomContext } = input;
     const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
 
     const systemPrompt = `You are an expert indoor air quality certified building engineer, PPE respirator specialist, and multimodal vision inspector for VayuShield AI.

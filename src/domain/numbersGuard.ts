@@ -74,7 +74,7 @@ export function extractNumbersFromText(text: string): number[] {
 /**
  * Flattens certified metrics object into an array of certified numbers
  */
-export function getCertifiedNumbersList(metrics: CertifiedMetricsContext): number[] {
+export function getCertifiedNumbersList(metrics: CertifiedMetricsContext | ImpactLedgerMetrics): number[] {
   const list: number[] = [];
   for (const val of Object.values(metrics)) {
     if (typeof val === 'number' && !Number.isNaN(val)) {
@@ -93,7 +93,7 @@ export function getCertifiedNumbersList(metrics: CertifiedMetricsContext): numbe
  */
 export function verifyAndSanitizeText(
   aiText: string,
-  certifiedMetrics: CertifiedMetricsContext
+  certifiedMetrics: CertifiedMetricsContext | ImpactLedgerMetrics
 ): GroundingCheckResult {
   if (!aiText || typeof aiText !== 'string') {
     return {
@@ -133,7 +133,8 @@ export function verifyAndSanitizeText(
 
         // Redact unverified quantitative claims
         // e.g. replace "saves 45 kg of CO2" with "saves verified emissions"
-        const regex = new RegExp(`\\b${num.toString().replace('.', '\\.')}(?:%|\\s*kg|\\s*cigarettes?|\\s*ug/m³|\\s*µg/m³)?\\b`, 'gi');
+        const escapedNum = num.toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escapedNum}(?:\\s*(?:%|kg|cigarettes?|ug/m³|µg/m³))?\\b`, 'gi');
         sanitizedSentence = sanitizedSentence.replace(regex, '[verified engine figure]');
       }
     }

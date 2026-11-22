@@ -3,48 +3,7 @@ import intakeHandler from '../../api/intake';
 import visionHandler from '../../api/vision-audit';
 import planHandler from '../../api/plan';
 import askHandler from '../../api/ask';
-
-// Mock request / response helpers for serverless function testing
-function createMockReqRes(body: any, method = 'POST') {
-  const req = {
-    method,
-    body,
-  };
-
-  let statusCode = 200;
-  let responseData: any = null;
-
-  const res = {
-    status(code: number) {
-      statusCode = code;
-      return this;
-    },
-    json(data: any) {
-      responseData = data;
-      return this;
-    },
-    setHeader() {},
-    end(str?: string) {
-      if (str && !responseData) {
-        try {
-          responseData = JSON.parse(str);
-        } catch {
-          responseData = str;
-        }
-      }
-    },
-    getStatusCode: () => statusCode,
-    getData: () => responseData,
-  };
-
-  return {
-    req: req as unknown as import('../../api/_lib/httpUtils').ExtendedRequest,
-    res: res as unknown as import('../../api/_lib/httpUtils').ExtendedResponse & {
-      getStatusCode: () => number;
-      getData: () => any;
-    },
-  };
-}
+import { createMockReqRes } from '../../tests/testHelpers';
 
 describe('Vercel Serverless Functions (/api/*) with 4-Tier Resilience', () => {
   it('/api/intake extracts family profile and vulnerability score', async () => {
