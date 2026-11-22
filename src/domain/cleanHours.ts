@@ -3,53 +3,11 @@
  * Shared deterministic algorithms for 24-hour diurnal windows and intervention checklists.
  */
 
-import { CleanHourWindow, HourlyForecastItem, ImpactLedgerMetrics, ActionItem } from './types';
+import { CleanHourWindow } from './types';
+import { generateDefaultHourly, getExerciseWindowStatus } from './cleanHours/diurnalGenerator';
 
-/**
- * Maps an AQI value to its diurnal category without nested ternary branching.
- */
-function mapHourlyAqiCategory(aqi: number): 'hazardous' | 'veryUnhealthy' | 'unhealthy' | 'moderate' {
-  if (aqi > 300) return 'hazardous';
-  if (aqi > 200) return 'veryUnhealthy';
-  if (aqi > 150) return 'unhealthy';
-  return 'moderate';
-}
-
-/**
- * Determines outdoor exercise safety status for a given AQI.
- */
-function getExerciseWindowStatus(aqi: number): 'safe' | 'caution' | 'danger' {
-  if (aqi <= 150) return 'safe';
-  if (aqi <= 250) return 'caution';
-  return 'danger';
-}
-
-/**
- * Generates default 24-hour diurnal profile based on winter temperature inversion curve.
- */
-export function generateDefaultHourly(basePm25: number): HourlyForecastItem[] {
-  const items: HourlyForecastItem[] = [];
-  for (let i = 0; i < 24; i++) {
-    const diurnalFactor = 1 + 0.35 * Math.sin(((i - 8) * Math.PI) / 12) * -1;
-    const pm = Math.max(20, Math.round(basePm25 * diurnalFactor));
-    const aqi = Math.min(500, Math.round((pm / 150) * 200));
-
-    items.push({
-      time: `${i.toString().padStart(2, '0')}:00`,
-      hour: i,
-      pm25: pm,
-      pm10: Math.round(pm * 1.6),
-      no2: Math.round(40 + pm * 0.2),
-      aqi,
-      aqiCategory: mapHourlyAqiCategory(aqi),
-      isExerciseSafe: i >= 12 && i <= 15 && aqi < 200,
-      isCommuteWarning: (i >= 7 && i <= 10) || (i >= 19 && i <= 22),
-      isVentilationSafe: i === 14 && aqi < 150,
-      recommendation: i >= 12 && i <= 15 ? 'Moderate solar dispersion' : 'Inversion smog peak',
-    });
-  }
-  return items;
-}
+export * from './cleanHours/diurnalGenerator';
+export * from './cleanHours/actionChecklist';
 
 export interface CleanHourInputItem {
   hour: number;
@@ -58,6 +16,9 @@ export interface CleanHourInputItem {
 
 /**
  * Computes optimal clean hour windows for outdoor exercise, commute, ventilation, and sleep.
+ * @param hourly - Array of hourly forecasts
+ * @param currentPm25 - Current ambient PM2.5 in ug/m3
+ * @returns Four structured clean hour time windows
  */
 export function computeCleanHourWindows(hourly: CleanHourInputItem[], currentPm25: number): CleanHourWindow[] {
   const dayHours = hourly.length >= 24 ? hourly.slice(0, 24) : generateDefaultHourly(currentPm25);
@@ -71,7 +32,6 @@ export function computeCleanHourWindows(hourly: CleanHourInputItem[], currentPm2
     : 320;
 
   const bestVentHour = bestExerciseHour;
-
   const nightHours = dayHours.filter((h) => h.hour >= 22 || h.hour <= 6);
   const avgNightAqi = nightHours.length > 0
     ? Math.round(nightHours.reduce((s, h) => s + h.aqi, 0) / nightHours.length)
@@ -119,42 +79,6 @@ export function computeCleanHourWindows(hourly: CleanHourInputItem[], currentPm2
       avgAqi: avgNightAqi,
       status: 'caution',
       advice: 'Keep bedroom doors and windows tightly shut. Run Corsi-Rosenthal box or HEPA on medium-high speed all night.',
-    },
-  ];
-}
-
-/**
- * Returns baseline action items grounded in calculated impact metrics.
- */
-export function getDefaultActionChecklist(ledger: ImpactLedgerMetrics): ActionItem[] {
-  return [
-    {
-      id: 'task-1',
-      task: 'Equip all family members with certified N95 respirators',
-      category: 'immediate',
-      urgency: 'high',
-      rationale: 'Filters over 95% of inhaled fine particulates during outdoor exposure.',
-    },
-    {
-      id: 'task-2',
-      task: 'Deploy Corsi-Rosenthal Box or HEPA cleaner continuously',
-      category: 'equipment',
-      urgency: 'high',
-      rationale: `Yields ${ledger.inhaledPm25ReductionPct}% particulate reduction and saves ${ledger.avoidedCigarettesPerWeek} cigarette-equivalents weekly.`,
-    },
-    {
-      id: 'task-3',
-      task: 'Execute daily damp microfiber wet mopping',
-      category: 'daily',
-      urgency: 'medium',
-      rationale: 'Eliminates settled dust resuspension without kicking particles into the air.',
-    },
-    {
-      id: 'task-4',
-      task: 'Seal leaky window drafts with silicone tape',
-      category: 'immediate',
-      urgency: 'medium',
-      rationale: 'Reduces passive ambient smog penetration into living quarters.',
     },
   ];
 }

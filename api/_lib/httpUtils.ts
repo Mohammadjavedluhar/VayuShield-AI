@@ -1,5 +1,13 @@
+/**
+ * VayuShield AI - Serverless HTTP Request/Response Utilities
+ * Safe parsing, rate limiting, and response helpers for Vercel functions.
+ */
+
 import type { IncomingMessage, ServerResponse } from 'http';
-import type { ZodSchema } from 'zod';
+import { checkRateLimit } from './rateLimiter';
+import { applyCorsHeaders, resolveAllowedOrigin, ALLOWED_ORIGINS } from './corsUtils';
+import { sendJson, handlePreflightAndRateLimit } from './responseUtils';
+import { parseRequestBody, parseAndValidateRequest, MAX_TEXT_PAYLOAD_BYTES, MAX_VISION_PAYLOAD_BYTES } from './requestParser';
 
 export interface ExtendedRequest extends IncomingMessage {
   body?: unknown;
@@ -12,44 +20,23 @@ export interface ExtendedResponse extends ServerResponse {
   json?: (data: unknown) => void;
 }
 
-// In-memory rate limiting map: IP -> { count, resetTime }
-interface RateLimitRecord {
-  count: number;
-  resetTime: number;
-}
-
-const RATE_LIMIT_MAP = new Map<string, RateLimitRecord>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 60; // 60 requests per minute
-const MAX_TEXT_PAYLOAD_BYTES = 100 * 1024; // 100 KB
-const MAX_VISION_PAYLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
-
-/**
- * Checks whether an incoming request exceeds the rate limit.
- * Returns true if allowed, false if rate limited.
- */
-export function checkRateLimit(clientIp: string): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const record = RATE_LIMIT_MAP.get(clientIp);
-
-  if (!record || now > record.resetTime) {
-    RATE_LIMIT_MAP.set(clientIp, {
-      count: 1,
-      resetTime: now + RATE_LIMIT_WINDOW_MS,
-    });
-    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1 };
-  }
-
-  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  record.count += 1;
-  return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.count };
-}
+export {
+  checkRateLimit,
+  applyCorsHeaders,
+  resolveAllowedOrigin,
+  ALLOWED_ORIGINS,
+  sendJson,
+  handlePreflightAndRateLimit,
+  parseRequestBody,
+  parseAndValidateRequest,
+  MAX_TEXT_PAYLOAD_BYTES,
+  MAX_VISION_PAYLOAD_BYTES,
+};
 
 /**
  * Resolves client IP address safely from forwarded headers or socket.
+ * @param req - Extended request object
+ * @returns Client IP address string
  */
 export function getClientIp(req: ExtendedRequest): string {
   const forwarded = req.headers?.['x-forwarded-for'];
@@ -61,174 +48,3 @@ export function getClientIp(req: ExtendedRequest): string {
   }
   return req.socket?.remoteAddress || '127.0.0.1';
 }
-
-/**
- * Parses and validates incoming JSON request body with strict size bounds.
- */
-export async function parseRequestBody(
-  req: ExtendedRequest,
-  maxBytes: number = MAX_TEXT_PAYLOAD_BYTES
-): Promise<unknown> {
-  if (req.body) {
-    if (typeof req.body === 'string') {
-      try {
-        return JSON.parse(req.body);
-      } catch {
-        return {};
-      }
-    }
-    return req.body;
-  }
-
-  return new Promise((resolve, reject) => {
-    let rawData = '';
-    let bytesReceived = 0;
-
-    req.on('data', (chunk: Buffer | string) => {
-      const bufferChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      bytesReceived += bufferChunk.length;
-
-      if (bytesReceived > maxBytes) {
-        req.destroy();
-        reject(new Error(`Payload too large. Maximum size is ${maxBytes} bytes.`));
-        return;
-      }
-
-      rawData += bufferChunk.toString('utf8');
-    });
-
-    req.on('end', () => {
-      if (!rawData.trim()) {
-        resolve({});
-        return;
-      }
-      try {
-        resolve(JSON.parse(rawData));
-      } catch {
-        resolve({});
-      }
-    });
-
-    req.on('error', (err) => {
-      reject(err);
-    });
-  });
-}
-
-/**
- * Returns safe CORS origin header matching allowed patterns or same-origin.
- * Validates origin using URL parsing to guarantee complete immunity against ReDoS attacks.
- */
-function resolveAllowedOrigin(incomingOrigin?: string): string {
-  if (!incomingOrigin || typeof incomingOrigin !== 'string') return '';
-  try {
-    const parsed = new URL(incomingOrigin);
-    // Allow localhost for local development
-    if (parsed.protocol === 'http:' && parsed.hostname === 'localhost') {
-      return incomingOrigin;
-    }
-    // Allow Vercel deployment and custom subdomains safely without regex backtracking
-    if (
-      parsed.protocol === 'https:' &&
-      (parsed.hostname === 'vercel.app' || parsed.hostname.endsWith('.vercel.app')) &&
-      !parsed.hostname.includes('..')
-    ) {
-      return incomingOrigin;
-    }
-  } catch {
-    return '';
-  }
-  return '';
-}
-
-/**
- * Handles CORS headers, OPTIONS preflight, method restriction, and rate limiting.
- * Returns true if the request can proceed, or false if already responded to.
- */
-export function handlePreflightAndRateLimit(
-  req: ExtendedRequest,
-  res: ExtendedResponse,
-  allowedMethod: string = 'POST'
-): boolean {
-  applyCorsHeaders(req, res);
-
-  if (req.method === 'OPTIONS') {
-    sendJson(res, 200, { ok: true });
-    return false;
-  }
-
-  if (req.method !== allowedMethod) {
-    sendJson(res, 405, { error: `Method not allowed. Use ${allowedMethod}.` });
-    return false;
-  }
-
-  const clientIp = getClientIp(req);
-  const rateCheck = checkRateLimit(clientIp);
-  if (!rateCheck.allowed) {
-    sendJson(res, 429, { error: 'Rate limit exceeded. Maximum 60 requests per minute.' });
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Parses and validates the request body against a Zod schema.
- * Automatically sends 400 Bad Request on validation failure.
- */
-export async function parseAndValidateRequest<T>(
-  req: ExtendedRequest,
-  res: ExtendedResponse,
-  schema: ZodSchema<T>,
-  maxBytes: number = MAX_TEXT_PAYLOAD_BYTES
-): Promise<T | null> {
-  const rawBody = await parseRequestBody(req, maxBytes);
-  const parsedInput = schema.safeParse(rawBody);
-
-  if (!parsedInput.success) {
-    sendJson(res, 400, {
-      error: 'Invalid request body',
-      details: parsedInput.error.format(),
-    });
-    return null;
-  }
-
-  return parsedInput.data;
-}
-
-/**
- * Sends a JSON response with security headers and status code.
- */
-export function sendJson(res: ExtendedResponse, statusCode: number, data: unknown): void {
-  if (typeof res.status === 'function') {
-    const chained = res.status(statusCode);
-    if (chained && typeof chained.json === 'function') {
-      chained.json(data);
-      return;
-    }
-  }
-
-  res.statusCode = statusCode;
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-
-  res.end(JSON.stringify(data));
-}
-
-/**
- * Sets secure CORS headers on response if origin matches allowed policy.
- */
-export function applyCorsHeaders(req: ExtendedRequest, res: ExtendedResponse): void {
-  const originHeader = typeof req.headers?.origin === 'string' ? req.headers.origin : undefined;
-  const allowedOrigin = resolveAllowedOrigin(originHeader);
-
-  if (allowedOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  }
-}
-
-export { MAX_TEXT_PAYLOAD_BYTES, MAX_VISION_PAYLOAD_BYTES };

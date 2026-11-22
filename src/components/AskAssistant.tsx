@@ -1,99 +1,80 @@
 import React, { useState } from 'react';
-import {
-  Bot,
-  CheckCircle2,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  User,
-} from 'lucide-react';
+import { Bot, MessageSquare, Send } from 'lucide-react';
 import { AirQualityData, HouseholdProfile, ImpactLedgerMetrics } from '../domain/types';
 import { Language, translations } from '../i18n/translations';
+import { ChatMessageItem } from './ask/ChatMessageItem';
+import { QuickQuestionsBar } from './ask/QuickQuestionsBar';
 
-interface Message {
+interface ChatMessage {
   id: string;
   sender: 'user' | 'assistant';
   text: string;
-  recommendations?: string[];
-  isGrounded?: boolean;
-  tier?: string;
+  timestamp: string;
 }
 
 interface AskAssistantProps {
-  airQuality: AirQualityData;
+  onAskQuestion: (question: string) => Promise<string>;
+  airQuality: AirQualityData | null;
   profile: HouseholdProfile;
-  ledger: ImpactLedgerMetrics;
-  onAskApi: (question: string) => Promise<{
-    answer: string;
-    recommendations: string[];
-    isGrounded: boolean;
-    tier: string;
-  }>;
+  metrics: ImpactLedgerMetrics;
   language: Language;
 }
 
+const QUICK_QUESTIONS = [
+  'Is it safe for my kids to play outside right now?',
+  'Should an asthma patient commute by 2-wheeler today?',
+  'How do I build a DIY Corsi-Rosenthal box under ₹2,500?',
+  'What is thermal inversion and why is AQI worse at 7 AM?',
+];
+
 export const AskAssistant: React.FC<AskAssistantProps> = ({
-  airQuality,
-  onAskApi,
+  onAskQuestion,
   language,
 }) => {
   const t = translations[language];
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: 'init-1',
+      id: 'welcome',
       sender: 'assistant',
-      text: `Hello! I am VayuShield AI, your clinical and environmental smog assistant for ${airQuality.city}. Current AQI is ${airQuality.currentAqi} (PM2.5: ${airQuality.pm25} µg/m³). Ask me about safe exercise hours, DIY Corsi-Rosenthal box filtration, school commute precautions, or N95 mask fitting.`,
-      recommendations: [
-        'Ask about school travel safety during morning smog peaks',
-        'Ask how to build a ₹2,800 Corsi-Rosenthal box',
-        'Ask why cloth masks do not protect against fine PM2.5',
-      ],
-      isGrounded: true,
+      text: 'Hello! I am VayuShield AI, your clinical and particulate defense assistant. How can I help protect your household from winter smog today?',
+      timestamp: 'Just now',
     },
   ]);
 
-  const quickQuestions = [
-    'Should kids go to school or exercise outdoors at current AQI?',
-    'How do I build a ₹2,800 Corsi-Rosenthal box and does it work?',
-    'Why are cloth masks ineffective against PM2.5 winter smog?',
-    'What does the Berkeley Earth cigarette equivalence formula mean?',
-  ];
+  const handleSend = async (customText?: string) => {
+    const query = (customText || question).trim();
+    if (!query || isLoading) return;
 
-  const handleSend = async (qText?: string) => {
-    const textToSend = qText || question;
-    if (!textToSend.trim() || isLoading) return;
-
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
       sender: 'user',
-      text: textToSend,
+      text: query,
+      timestamp: 'Just now',
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    if (!qText) setQuestion('');
+    if (!customText) setQuestion('');
     setIsLoading(true);
 
     try {
-      const result = await onAskApi(textToSend);
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
+      const reply = await onAskQuestion(query);
+      const assistantMsg: ChatMessage = {
+        id: `a-${Date.now()}`,
         sender: 'assistant',
-        text: result.answer,
-        recommendations: result.recommendations,
-        isGrounded: result.isGrounded,
-        tier: result.tier,
+        text: reply,
+        timestamp: 'Just now',
       };
-      setMessages((prev) => [...prev, botMsg]);
+      setMessages((prev) => [...prev, assistantMsg]);
     } catch {
       setMessages((prev) => [
         ...prev,
         {
-          id: `bot-err-${Date.now()}`,
+          id: `err-${Date.now()}`,
           sender: 'assistant',
-          text: `In ${airQuality.city} at current AQI ${airQuality.currentAqi}, medical guidelines advise keeping windows closed, wearing certified N95 respirators outdoors, and running active indoor filtration.`,
-          isGrounded: true,
+          text: 'Unable to reach the assistant at this moment. Deterministic guidance is always available in the tabs.',
+          timestamp: 'Just now',
         },
       ]);
     } finally {
@@ -102,83 +83,23 @@ export const AskAssistant: React.FC<AskAssistantProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none flex flex-col h-[700px]">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-            <Bot className="w-4 h-4 text-cyan-500" />
-            <span>Clinical &amp; Evidence-Based AI Assistant</span>
+    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none flex flex-col h-[600px]">
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 to-teal-500 text-white flex items-center justify-center shadow-md">
+            <MessageSquare className="w-5 h-5" />
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {t.askTitle}
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {t.askSubtitle}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 self-start sm:self-auto">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>{t.groundedNotice}</span>
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">{t.tabAsk}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Grounded clinical guidance with zero-hallucination guardrails</p>
+          </div>
         </div>
       </div>
 
-      {/* Chat Messages Stream */}
       <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1 scrollbar-thin">
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex items-start gap-3 ${
-              msg.sender === 'user' ? 'flex-row-reverse' : ''
-            }`}
-          >
-            <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                msg.sender === 'user'
-                  ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-800 text-cyan-500'
-              }`}
-            >
-              {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-            </div>
-
-            <div
-              className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
-                msg.sender === 'user'
-                  ? 'bg-cyan-600 text-white rounded-tr-none'
-                  : 'bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
-              }`}
-            >
-              <p className="whitespace-pre-wrap">{msg.text}</p>
-
-              {msg.recommendations && msg.recommendations.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
-                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Key Recommendations:
-                  </div>
-                  {msg.recommendations.map((rec) => (
-                    <div key={`${msg.id}-rec-${rec.slice(0, 15)}`} className="flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-300">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                      <span>{rec}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {msg.sender === 'assistant' && (
-                <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800/60">
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                    <span>EPA &amp; Berkeley Earth Grounded</span>
-                  </span>
-                  {msg.tier && <span>{msg.tier.replace('tier2_', '').replace('tier4_', '')}</span>}
-                </div>
-              )}
-            </div>
-          </div>
+          <ChatMessageItem key={msg.id} msg={msg} />
         ))}
-
         {isLoading && (
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-cyan-500 flex items-center justify-center shrink-0">
@@ -192,43 +113,21 @@ export const AskAssistant: React.FC<AskAssistantProps> = ({
         )}
       </div>
 
-      {/* Suggested Quick Prompt Chips */}
-      <div className="py-2 shrink-0">
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {quickQuestions.map((q) => (
-            <button
-              key={`quick-q-${q.slice(0, 20)}`}
-              type="button"
-              onClick={() => handleSend(q)}
-              className="text-left text-xs px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition whitespace-nowrap flex items-center gap-1.5 shrink-0"
-            >
-              <Sparkles className="w-3 h-3 text-cyan-500" />
-              <span>{q}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <QuickQuestionsBar questions={QUICK_QUESTIONS} onSelectQuestion={handleSend} />
 
-      {/* Input Box */}
       <div className="pt-2 border-t border-slate-100 dark:border-slate-800 shrink-0">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSend();
-          }}
-          className="relative"
-        >
+        <form onSubmit={(e) => { e.preventDefault(); void handleSend(); }} className="relative">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder={t.askPlaceholder}
-            className="w-full pl-4 pr-12 py-3 text-sm rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            placeholder="Ask about masks, clean hours, or indoor filtration..."
+            className="w-full pl-4 pr-12 py-3 min-h-[44px] text-sm rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
           />
           <button
             type="submit"
             disabled={isLoading || !question.trim()}
-            className="absolute right-2.5 top-2 p-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-md hover:opacity-95 disabled:opacity-40 transition"
+            className="absolute right-2.5 top-2 p-2 min-h-[44px] min-w-[44px] rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-md hover:opacity-95 disabled:opacity-40 transition flex items-center justify-center"
           >
             <Send className="w-4 h-4" />
           </button>

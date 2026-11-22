@@ -11,9 +11,12 @@ import {
 import { VisionAuditResponseSchema, VisionRequestSchema } from './_lib/types';
 import { calculateCorsiRosenthalSizing } from '../src/domain/impactEngine';
 import { verifyAndSanitizeText } from '../src/domain/numbersGuard';
+import { VISION_SYSTEM_PROMPT, buildVisionPrompt } from './_lib/prompts/visionPrompts';
 
 /**
  * Serverless API handler for multimodal image inspection of masks, filters, and rooms.
+ * @param req - Extended HTTP request
+ * @param res - Extended HTTP response
  */
 export default async function handler(req: ExtendedRequest, res: ExtendedResponse): Promise<void> {
   if (!handlePreflightAndRateLimit(req, res)) {
@@ -27,64 +30,10 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
     const { imageBase64, mimeType, roomContext } = input;
     const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
 
-    const systemPrompt = `You are an expert indoor air quality certified building engineer, PPE respirator specialist, and multimodal vision inspector for VayuShield AI.
-Analyze the user's uploaded photograph, which may be:
-1. Room, kitchen, or window smog scene (detect particulate sources, incense, gas burners, draft leaks)
-2. Mask / respirator fit photo (detect nose bridge clamp gaps, facial perimeter seal leakage, cloth vs certified N95)
-3. Air purifier filter condition photo (detect gray/black particulate saturation and replacement urgency)
-Output ONLY structured JSON strictly conforming to this schema:
-{
-  "roomType": string,
-  "scanCategory": "room_indoor" | "mask_fit" | "filter_condition" | "outdoor_smog",
-  "confidenceScore": number (0 - 100),
-  "overallVentilationRating": "poor" | "fair" | "good",
-  "estimatedIndoorPm25": number,
-  "maskFitAnalysis": {
-    "fitStatus": "tight_certified" | "leaky_gaps" | "improper_mask_type",
-    "gapLocations": string[],
-    "correctiveAction": string
-  } (optional),
-  "filterConditionAnalysis": {
-    "saturationLevel": "clean_new" | "moderately_loaded" | "critically_saturated",
-    "replacementNeeded": boolean,
-    "remainingLifeDays": number
-  } (optional),
-  "zeroCostActions": string[],
-  "hazardsIdentified": [
-    {
-      "hazard": string,
-      "severity": "low" | "medium" | "high" | "critical",
-      "description": string,
-      "estimatedPm25ContributionUg": number
-    }
-  ],
-  "diyFixes": [
-    {
-      "title": string,
-      "costTier": "free" | "low" | "medium",
-      "action": string,
-      "expectedPm25DropPct": number
-    }
-  ],
-  "crBoxRecommended": boolean,
-  "plantsRecommended": [
-    {
-      "name": string,
-      "targetPollutant": string,
-      "careLevel": "easy" | "moderate",
-      "airBenefit": string
-    }
-  ],
-  "summary": string
-}`;
-
-    const prompt = `Inspect this image. Room context if specified: "${roomContext || 'indoor living room or kitchen'}".
-Detect all visible air quality hazards, infiltration points, and ventilation quality. Provide low-cost DIY engineering remedies.`;
-
     const cascadeResult = await executeAiCascade({
       task: 'vision_audit',
-      prompt,
-      systemInstruction: systemPrompt,
+      prompt: buildVisionPrompt(roomContext),
+      systemInstruction: VISION_SYSTEM_PROMPT,
       imagePart: {
         inlineData: {
           data: cleanBase64,
@@ -96,10 +45,7 @@ Detect all visible air quality hazards, infiltration points, and ventilation qua
       temperature: 0.1,
     });
 
-    // Compute deterministic Corsi-Rosenthal box sizing
     const crSizing = calculateCorsiRosenthalSizing(220, 9, 5);
-
-    // Apply Numbers Guard to the summary text
     const numbersGuardResult = verifyAndSanitizeText(cascadeResult.data.summary, {
       pm25: cascadeResult.data.estimatedIndoorPm25,
       requiredCadrCfm: crSizing.requiredCadrCfm,
@@ -131,7 +77,9 @@ Detect all visible air quality hazards, infiltration points, and ventilation qua
       audit: fallback,
       source: 'template_fallback',
       tier: 'tier4_fallback',
+      latencyMs: 0,
       numbersGrounded: true,
+      error: errorMsg,
     });
   }
 }
