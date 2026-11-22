@@ -24,15 +24,15 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --ignore-scripts
 
       - name: Lint and typecheck
         run: |
-          npx oxlint
-          npx tsc -b
+          ./node_modules/.bin/oxlint
+          ./node_modules/.bin/tsc -b
 
       - name: Run unit tests with LCOV coverage
-        run: npm test -- --coverage
+        run: ./node_modules/.bin/vitest run --coverage
 
       - name: Build production bundle
         run: npm run build
