@@ -2,6 +2,7 @@ import React from 'react';
 import { Award, ShieldCheck } from 'lucide-react';
 import { CommuteMode, CookingFuel, HouseholdProfile, ImpactLedgerMetrics, Interventions } from '../domain/types';
 import { Language, translations } from '../i18n/translations';
+import { CardSectionHeader } from './common/CardSectionHeader';
 import { LedgerMetricsCards } from './ledger/LedgerMetricsCards';
 import { LedgerInterventionToggles } from './ledger/LedgerInterventionToggles';
 
@@ -47,25 +48,18 @@ export const ImpactLedger: React.FC<ImpactLedgerProps> = ({
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-            <ShieldCheck className="w-4 h-4 text-cyan-500" />
-            <span>Deterministic Impact Engine (Berkeley Earth &amp; US EPA Formulas)</span>
+      <CardSectionHeader
+        icon={<ShieldCheck className="w-4 h-4 text-cyan-500" />}
+        badgeText="Deterministic Impact Engine (Berkeley Earth & US EPA Formulas)"
+        title={t.ledgerTitle}
+        subtitle={t.ledgerSubtitle}
+        rightAction={
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 self-start sm:self-auto">
+            <Award className="w-4 h-4" />
+            <span>{t.berkeleyBadge}</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {t.ledgerTitle}
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            {t.ledgerSubtitle}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 self-start sm:self-auto">
-          <Award className="w-4 h-4" />
-          <span>{t.berkeleyBadge}</span>
-        </div>
-      </div>
+        }
+      />
 
       <LedgerMetricsCards
         metrics={metrics}

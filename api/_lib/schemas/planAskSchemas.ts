@@ -4,22 +4,10 @@
  */
 
 import { z } from 'zod';
-import { CommuteModeSchema, CookingFuelSchema, HeatingSourceSchema } from './enums';
+import { BaseHouseholdProfileFields } from './enums';
 
 export const HouseholdProfileSchema = z.object({
-  householdSize: z.number().int().min(1).max(20).default(4),
-  city: z.string().default('Delhi'),
-  hasAsthma: z.boolean().default(false),
-  hasCopdOrCardiac: z.boolean().default(false),
-  hasChildren: z.boolean().default(false),
-  hasElderly: z.boolean().default(false),
-  isPregnant: z.boolean().default(false),
-  commuteMode: CommuteModeSchema.default('car'),
-  commuteDistanceKm: z.number().min(0).max(100).default(10),
-  cookingFuel: CookingFuelSchema.default('lpg'),
-  heatingSource: HeatingSourceSchema.default('none'),
-  hasAirPurifier: z.boolean().default(false),
-  wearsMaskOutdoors: z.boolean().default(false),
+  ...BaseHouseholdProfileFields,
   rawInput: z.string().optional(),
   vulnerabilityScore: z.number().default(50),
   vulnerabilityLevel: z.enum(['low', 'moderate', 'high', 'critical']).default('moderate'),

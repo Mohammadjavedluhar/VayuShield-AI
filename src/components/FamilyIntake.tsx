@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Brain, Send } from 'lucide-react';
 import { HouseholdProfile } from '../domain/types';
 import { Language, translations } from '../i18n/translations';
+import { CardSectionHeader } from './common/CardSectionHeader';
 import { FamilyProfileDisplay } from './intake/FamilyProfileDisplay';
 import { FamilySampleChips } from './intake/FamilySampleChips';
 
@@ -50,27 +51,20 @@ export const FamilyIntake: React.FC<FamilyIntakeProps> = ({
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-            <Brain className="w-4 h-4 text-cyan-500" />
-            <span>GenAI Natural Language Extraction</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {t.intakeTitle}
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            {t.intakeSubtitle}
-          </p>
-        </div>
-
-        {resilienceTier && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Tier: {resilienceTier.replace('tier2_', '').replace('tier4_', '')}</span>
-          </div>
-        )}
-      </div>
+      <CardSectionHeader
+        icon={<Brain className="w-4 h-4 text-cyan-500" />}
+        badgeText="GenAI Natural Language Extraction"
+        title={t.intakeTitle}
+        subtitle={t.intakeSubtitle}
+        rightAction={
+          resilienceTier ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Tier: {resilienceTier.replace('tier2_', '').replace('tier4_', '')}</span>
+            </div>
+          ) : undefined
+        }
+      />
 
       <form onSubmit={handleSubmit} className="mt-6">
         <div className="relative">

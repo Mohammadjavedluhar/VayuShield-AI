@@ -4,6 +4,7 @@ import { runWhatIfSimulation } from '../domain/simulator';
 import { CommuteMode, CookingFuel, HouseholdProfile } from '../domain/types';
 import { MaskGrade } from '../domain/commuteGuard';
 import { Language } from '../i18n/translations';
+import { CardSectionHeader } from './common/CardSectionHeader';
 import { SimulatorControls } from './whatif/SimulatorControls';
 import { SimulatorMetricsStrip } from './whatif/SimulatorMetricsStrip';
 import { PrintableFamilyPlan } from './whatif/PrintableFamilyPlan';
@@ -51,30 +52,22 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-            <Sliders className="w-4 h-4 text-cyan-500" />
-            <span>Interactive Family Policy Sandbox</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            "What-If" Policy Simulator &amp; Printable Action Plan
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            Slide runtime hours, transit modes, and cooking fuels to dynamically compute custom household health and financial savings.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={handlePrintPlan}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg shadow-cyan-600/20 hover:opacity-95 transition self-start sm:self-auto min-h-[44px]"
-        >
-          <Printer className="w-4 h-4" />
-          <span>Download Family Plan (Print/PDF)</span>
-        </button>
-      </div>
+      <CardSectionHeader
+        icon={<Sliders className="w-4 h-4 text-cyan-500" />}
+        badgeText="Interactive Family Policy Sandbox"
+        title='"What-If" Policy Simulator & Printable Action Plan'
+        subtitle="Slide runtime hours, transit modes, and cooking fuels to dynamically compute custom household health and financial savings."
+        rightAction={
+          <button
+            type="button"
+            onClick={handlePrintPlan}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg shadow-cyan-600/20 hover:opacity-95 transition self-start sm:self-auto min-h-[44px]"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Download Family Plan (Print/PDF)</span>
+          </button>
+        }
+      />
 
       {/* Simulator Sliders & Controls */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

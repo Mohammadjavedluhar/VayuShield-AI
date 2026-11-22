@@ -10,6 +10,7 @@ import {
 } from '../domain/indoorModel';
 import { getAqiColorTheme } from '../domain/airQuality';
 import { Language } from '../i18n/translations';
+import { CardSectionHeader } from './common/CardSectionHeader';
 import { IndoorGauges } from './indoor/IndoorGauges';
 import { IndoorControls } from './indoor/IndoorControls';
 import { IndoorPhysicsBreakdown } from './indoor/IndoorPhysicsBreakdown';
@@ -57,28 +58,21 @@ export const IndoorAqiCard: React.FC<IndoorAqiCardProps> = ({
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-            <Cpu className="w-4 h-4 text-cyan-500" />
-            <span>EPA Mass-Balance Physics Simulation (No Hardware Needed)</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            Real-Time Indoor AQI Estimator
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            Simulates indoor particulate steady-state using ambient Open-Meteo readings, building penetration factor (P), and internal generation sources.
-          </p>
-        </div>
-
-        <button
-          onClick={onOpenCrModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition self-start sm:self-auto"
-        >
-          <Wrench className="w-3.5 h-3.5" />
-          <span>DIY Purifier CADR</span>
-        </button>
-      </div>
+      <CardSectionHeader
+        icon={<Cpu className="w-4 h-4 text-cyan-500" />}
+        badgeText="EPA Mass-Balance Physics Simulation (No Hardware Needed)"
+        title="Real-Time Indoor AQI Estimator"
+        subtitle="Simulates indoor particulate steady-state using ambient Open-Meteo readings, building penetration factor (P), and internal generation sources."
+        rightAction={
+          <button
+            onClick={onOpenCrModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition self-start sm:self-auto"
+          >
+            <Wrench className="w-3.5 h-3.5" />
+            <span>DIY Purifier CADR</span>
+          </button>
+        }
+      />
 
       <IndoorGauges
         city={city}

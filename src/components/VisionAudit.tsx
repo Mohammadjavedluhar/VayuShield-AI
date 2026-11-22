@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, Wrench } from 'lucide-react';
 import { VisionAuditResult } from '../domain/types';
 import { Language, translations } from '../i18n/translations';
+import { CardSectionHeader } from './common/CardSectionHeader';
 import { SAMPLE_PHOTOS, SamplePhoto } from './vision/samplePhotos';
 import { VisionSamplePicker } from './vision/VisionSamplePicker';
 import { VisionDropzone } from './vision/VisionDropzone';
@@ -58,29 +59,21 @@ export const VisionAudit: React.FC<VisionAuditProps> = ({
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-            <Camera className="w-4 h-4 text-cyan-500" />
-            <span>Gemini 2.5 Flash Multimodal Vision</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {t.scannerTitle}
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            {t.scannerSubtitle}
-          </p>
-        </div>
-
-        <button
-          onClick={onOpenCrModal}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition self-start sm:self-auto min-h-[44px]"
-        >
-          <Wrench className="w-3.5 h-3.5" />
-          <span>DIY Box Calculator</span>
-        </button>
-      </div>
+      <CardSectionHeader
+        icon={<Camera className="w-4 h-4 text-cyan-500" />}
+        badgeText="Gemini 2.5 Flash Multimodal Vision"
+        title={t.scannerTitle}
+        subtitle={t.scannerSubtitle}
+        rightAction={
+          <button
+            onClick={onOpenCrModal}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition self-start sm:self-auto min-h-[44px]"
+          >
+            <Wrench className="w-3.5 h-3.5" />
+            <span>DIY Box Calculator</span>
+          </button>
+        }
+      />
 
       {/* Upload Zone & Preloaded Samples Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">

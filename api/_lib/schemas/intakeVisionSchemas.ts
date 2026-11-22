@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { CommuteModeSchema, CookingFuelSchema, HeatingSourceSchema } from './enums';
+import { BaseHouseholdProfileFields } from './enums';
 
 export const IntakeRequestSchema = z.object({
   text: z.string().min(3).max(500),
@@ -12,19 +12,7 @@ export const IntakeRequestSchema = z.object({
 });
 
 export const IntakeResponseSchema = z.object({
-  householdSize: z.number().int().min(1).max(20).default(4),
-  city: z.string().default('Delhi'),
-  hasAsthma: z.boolean().default(false),
-  hasCopdOrCardiac: z.boolean().default(false),
-  hasChildren: z.boolean().default(false),
-  hasElderly: z.boolean().default(false),
-  isPregnant: z.boolean().default(false),
-  commuteMode: CommuteModeSchema.default('car'),
-  commuteDistanceKm: z.number().min(0).max(100).default(10),
-  cookingFuel: CookingFuelSchema.default('lpg'),
-  heatingSource: HeatingSourceSchema.default('none'),
-  hasAirPurifier: z.boolean().default(false),
-  wearsMaskOutdoors: z.boolean().default(false),
+  ...BaseHouseholdProfileFields,
   explanation: z.string().default('Household profile extracted from input sentence.'),
 });
 
